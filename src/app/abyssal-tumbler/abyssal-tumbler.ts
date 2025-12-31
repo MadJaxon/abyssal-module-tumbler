@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import {ChangeDetectorRef, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {DecimalPipe} from '@angular/common';
 import {AbyssalService} from '../abyssal-service';
@@ -34,61 +34,15 @@ export class AbyssalTumbler {
   public cpuBudget: number = 100;
   public pgBudget: number = 100;
   public numModules: number = 3;
-  public modules: Module[] = [
-    // {
-    //   index: 1,
-    //   cpu: 25.62,
-    //   pg: 1,
-    //   dmgMulti: 1.109,
-    //   rofBonus: 10.862
-    // },
-    // {
-    //   index: 2,
-    //   cpu: 31.25,
-    //   pg: 1,
-    //   dmgMulti: 1.108,
-    //   rofBonus: 11.575
-    // },
-    // {
-    //   index: 3,
-    //   cpu: 29.38,
-    //   pg: 1,
-    //   dmgMulti: 1.105,
-    //   rofBonus: 11.661
-    // },
-    // {
-    //   index: 4,
-    //   cpu: 30.01,
-    //   pg: 1,
-    //   dmgMulti: 1.106,
-    //   rofBonus: 11.655
-    // },
-    // {
-    //   index: 5,
-    //   cpu: 30.28,
-    //   pg: 1,
-    //   dmgMulti: 1.11,
-    //   rofBonus: 10.927
-    // },
-    // {
-    //   index: 6,
-    //   cpu: 27.69,
-    //   pg: 1,
-    //   dmgMulti: 1.112,
-    //   rofBonus: 11.159
-    // },
-  ];
+  public modules: Module[] = [];
   public results: Result[] = [];
   public errorMessage: string = '';
   public useCacheLayer: boolean = true;
 
   constructor(
-    private abyssalService: AbyssalService
-  ) {
-    // const single = '[18:35:37] Deringston Xa\'thon > <url=showinfo:78621//1050979976886>Abyssal Vorton Tuning System</url>';
-    // const multiple = '[18:38:26] Deringston Xa\'thon > <url=showinfo:78621//1046894300758>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1047045201453>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1047045202498>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1047045204718>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1047045259979>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1047280310266>Abyssal Vorton Tuning System</url>\n';
-    // this.abyssalService.parseAbyssalModuleFromChat(single)
-  }
+    private abyssalService: AbyssalService,
+    private cdr: ChangeDetectorRef
+  ) { }
 
 
   public removeModule(index: number): boolean {
@@ -171,33 +125,42 @@ export class AbyssalTumbler {
     }
     input.value = '';
     const moduleIds = this.modules.map(m => m.itemId);
-    const updatedItems = await this.abyssalService.updateDogmaAttributes(items.filter(item => !moduleIds.includes(item.itemId)));
-    updatedItems.forEach((item) => {
-      const cpu = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 50)?.value;
-      const pg = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 30)?.value;
-      const dmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 64)?.value;
-      const rofBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 204)?.value;
-      if (
-        dmgMultiplier &&
-        rofBonus &&
-        cpu &&
-        pg
-      ) {
-        let index = 1;
-        const indizes = this.modules.map(m => m.index);
-        while (indizes.includes(index)) {
-          index++;
+
+    this.errorMessage = '';
+    try {
+      const updatedItems = await this.abyssalService.updateDogmaAttributes(items.filter(item => !moduleIds.includes(item.itemId)));
+      updatedItems.forEach((item) => {
+        const cpu = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 50)?.value;
+        const pg = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 30)?.value;
+        const dmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 64)?.value;
+        const rofBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 204)?.value;
+        if (
+          dmgMultiplier &&
+          rofBonus &&
+          cpu &&
+          pg
+        ) {
+          let index = 1;
+          const indizes = this.modules.map(m => m.index);
+          while (indizes.includes(index)) {
+            index++;
+          }
+          this.modules.push({
+            index: index,
+            dmgMulti: dmgMultiplier,
+            rofBonus: (1 - rofBonus) * 100,
+            cpu: cpu,
+            pg: pg,
+            itemId: item.itemId
+          })
         }
-        this.modules.push({
-          index: index,
-          dmgMulti: dmgMultiplier,
-          rofBonus: (1 - rofBonus) * 100,
-          cpu: cpu,
-          pg: pg,
-          itemId: item.itemId
-        })
-      }
-    })
+      });
+    } catch (e: any) {
+      console.error('Error fetching from ESI:', e);
+      this.errorMessage = '' + e.message;
+      this.cdr.detectChanges();
+      return;
+    }
   }
 
   public calculateCombinations() {
@@ -209,7 +172,6 @@ export class AbyssalTumbler {
       return;
     }
 
-    // const modules = this.parseModules();
     const modules = [...this.modules];
     if (modules.length < this.numModules) {
       this.errorMessage = 'Not enough modules entered.';
@@ -232,7 +194,6 @@ export class AbyssalTumbler {
       }
     });
 
-    // Sort results by DPS increase descending
     this.results.sort((a, b) => b.dpsIncrease - a.dpsIncrease);
   }
 
@@ -248,20 +209,6 @@ export class AbyssalTumbler {
     }
     return result;
   }
-
-  // private calculateDpsIncrease(modules: Module[]): number {
-  //   const dmgBonuses: number[] = modules.map(m => m.dmgMulti - 1);
-  //   const rofFractions: number[] = modules.map(m => 1 / (1 - m.rofBonus / 100) - 1);
-  //
-  //   const stackedDmg = this.stackedBonus(dmgBonuses);
-  //   const stackedRof = this.stackedBonus(rofFractions);
-  //
-  //   const totalDmgMulti = 1 + stackedDmg;
-  //   const totalRofMulti = 1 + stackedRof;
-  //
-  //   const dpsMulti = totalDmgMulti * totalRofMulti;
-  //   return (dpsMulti - 1) * 100;
-  // }
 
   private calculateDpsIncrease(modules: Module[]): number {
     let dmgBonuses: number[] = modules.map(m => m.dmgMulti - 1);

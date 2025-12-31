@@ -68,31 +68,26 @@ export class AbyssalService {
   }
 
   private async getDogmaResult(item: EsiItem): Promise<EsiDogmaResponse|null> {
-    try {
-      // Fetch dynamic item dogma from ESI
-      const dogmaResponse = await lastValueFrom(this.http.get<EsiResponse>((this.useCacheLayer ? this.esiCacheUrl : this.esiUrl) + `/latest/dogma/dynamic/items/${item.typeId}/${item.itemId}/?datasource=tranquility`));
-      if (!dogmaResponse) {
-        console.error(dogmaResponse);
-        throw new Error(`ESI error`);
-      }
-
-      const creatorId = dogmaResponse['created_by'];
-      const sourceTypeId = dogmaResponse['source_type_id'];
-      const mutatorTypeId = dogmaResponse['mutator_type_id'];
-
-      const attributes: {attribute_id: number; value: number}[] = dogmaResponse['dogma_attributes'];
-      const effects: {effect_id: number; is_default: boolean}[] = dogmaResponse['dogma_effects'];
-
-      return {
-        created_by: creatorId,
-        source_type_id: sourceTypeId,
-        mutator_type_id: mutatorTypeId,
-        dogma_attributes: attributes,
-        dogma_effects: effects
-      };
-    } catch (error) {
-      console.error('Error fetching from ESI:', error);
-      return null;
+    // Fetch dynamic item dogma from ESI
+    const dogmaResponse = await lastValueFrom(this.http.get<EsiResponse>((this.useCacheLayer ? this.esiCacheUrl : this.esiUrl) + `/latest/dogma/dynamic/items/${item.typeId}/${item.itemId}/?datasource=tranquility`));
+    if (!dogmaResponse) {
+      console.error(dogmaResponse);
+      throw new Error(`ESI error`);
     }
+
+    const creatorId = dogmaResponse['created_by'];
+    const sourceTypeId = dogmaResponse['source_type_id'];
+    const mutatorTypeId = dogmaResponse['mutator_type_id'];
+
+    const attributes: {attribute_id: number; value: number}[] = dogmaResponse['dogma_attributes'];
+    const effects: {effect_id: number; is_default: boolean}[] = dogmaResponse['dogma_effects'];
+
+    return {
+      created_by: creatorId,
+      source_type_id: sourceTypeId,
+      mutator_type_id: mutatorTypeId,
+      dogma_attributes: attributes,
+      dogma_effects: effects
+    };
   }
 }
