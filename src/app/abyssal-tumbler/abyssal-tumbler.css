@@ -1,0 +1,127 @@
+.container {
+  /*max-width: 900px;*/
+  position: relative;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1, h2 {
+  color: #ffffff;
+}
+
+.inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+label {
+  font-weight: bold;
+  color: var(--text-secondary);
+}
+
+input, select, textarea {
+  padding: 10px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
+}
+
+button {
+  padding: 10px 16px;
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+button:hover {
+  background-color: var(--accent-hover);
+}
+
+button.remove {
+  background-color: #da3633;
+}
+
+button.remove:hover {
+  background-color: #b02a26;
+}
+
+button.add {
+  background-color: #238636;
+}
+
+button.add:hover {
+  background-color: #1a7f37;
+}
+
+button.calculate {  /* For your big Calculate button */
+  padding: 14px;
+  font-size: 18px;
+  margin-top: 10px;
+}
+
+.results {
+  margin-top: 30px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--bg-card);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+th, td {
+  border: 1px solid var(--border);
+  padding: 12px;
+  text-align: left;
+}
+
+th {
+  background-color: var(--table-header);
+  color: var(--text-secondary);
+}
+
+tr:nth-child(even) {
+  background-color: var(--bg-secondary);
+}
+
+.error {
+  color: var(--error);
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.module-row {
+  display: grid;
+  grid-template-columns: auto repeat(4, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 8px;
+  background-color: var(--bg-card);
+  border-radius: 6px;
+}
+
+.module-row label {
+  font-weight: normal;
+  color: var(--text-primary);
+}
+
+#cache {
+  position: absolute;
+  top: 0;
+  right: 0;
+}

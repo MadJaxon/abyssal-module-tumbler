@@ -1,0 +1,70 @@
+<div class="container">
+  <h1>Abyssal Module Tumbler</h1>
+  <div id="cache">
+    <label for="cacheLayer">Use local ESI-CacheLayer?</label>
+    <input id="cacheLayer" #cacheLayer type="checkbox" [checked]="useCacheLayer" (change)="updateCacheLayer(cacheLayer.checked)" />
+  </div>
+  <div class="inputs">
+    <label>Fitting Budget CPU (tf):</label>
+    <input type="number" [(ngModel)]="cpuBudget" placeholder="Enter CPU budget">
+
+    <label>Fitting Budget Powergrid (MW):</label>
+    <input type="number" [(ngModel)]="pgBudget" placeholder="Enter Powergrid budget">
+
+    <label>Paste up to 6 Modules at a time:</label>
+    <textarea #chatMessage (keyup)="parseChatMessage(chatMessage)" ></textarea>
+
+    <label>Number of Modules Required:</label>
+    <input type="number" [(ngModel)]="numModules" placeholder="Enter number of modules">
+    @for (module of modules; track module.index) {
+      <div>
+        <b>#{{module.index}}&nbsp;</b>
+        <label>CPU:</label><input #cpu type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.cpu">
+        <label>PG:</label><input #pg type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.pg">
+        <label>DmgMulti:</label><input #dmgMulti type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.dmgMulti">
+        <label>RofBonus:</label><input #rofBonus type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.rofBonus">
+        <button (click)="removeModule(module.index)">Remove</button>
+      </div>
+    }
+    <div>
+      <label>CPU:</label><input #cpu type="number">
+      <label>PG:</label><input #pg type="number">
+      <label>DmgMulti:</label><input #dmgMulti type="number">
+      <label>RofBonus:</label><input #rofBonus type="number">
+      <button (click)="addModule(cpu, pg, dmgMulti, rofBonus)">Add</button>
+    </div>
+
+    <button (click)="calculateCombinations()">Calculate Combinations</button>
+  </div>
+
+  @if (results.length > 0) {
+    <div class="results">
+      <h2>Possible Combinations ({{results.length}} found)</h2>
+      <table>
+        <thead>
+        <tr>
+          <th>Modules</th>
+          <th>Total CPU</th>
+          <th>Total PG</th>
+          <th>DPS Increase (%)</th>
+        </tr>
+        </thead>
+        <tbody>
+          @for(result of results; track result.id) {
+            <tr>
+              <td>{{result.modules.join(', ')}}</td>
+              <td>{{result.totalCpu}} tf</td>
+              <td>{{result.totalPg}} MW</td>
+              <td>{{result.dpsIncrease | number:'1.2-2'}}%</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+  @if (errorMessage) {
+    <div class="error">
+      {{errorMessage}}
+    </div>
+  }
+</div>

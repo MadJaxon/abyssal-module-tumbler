@@ -1,12 +1,11 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import {AbyssalTumbler} from './abyssal-tumbler/abyssal-tumbler';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [AbyssalTumbler],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App {
-  protected readonly title = signal('abyssal-tumbler');
-}
+export class App {}
