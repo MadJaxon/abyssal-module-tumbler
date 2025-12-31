@@ -9,12 +9,13 @@ interface Module {
   pg: number;
   dmgMulti: number;
   rofBonus: number;
-  index: number; // Original index for display
+  index: number;
+  itemId?: string;
 }
 
 interface Result {
   id: number;
-  modules: number[]; // Indices of modules
+  modules: number[];
   totalCpu: number;
   totalPg: number;
   dpsIncrease: number;
@@ -169,7 +170,8 @@ export class AbyssalTumbler {
       return;
     }
     input.value = '';
-    const updatedItems = await this.abyssalService.updateDogmaAttributes(items);
+    const moduleIds = this.modules.map(m => m.itemId);
+    const updatedItems = await this.abyssalService.updateDogmaAttributes(items.filter(item => !moduleIds.includes(item.itemId)));
     updatedItems.forEach((item) => {
       const cpu = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 50)?.value;
       const pg = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 30)?.value;
@@ -191,7 +193,8 @@ export class AbyssalTumbler {
           dmgMulti: dmgMultiplier,
           rofBonus: (1 - rofBonus) * 100,
           cpu: cpu,
-          pg: pg
+          pg: pg,
+          itemId: item.itemId
         })
       }
     })
