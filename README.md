@@ -1,6 +1,11 @@
 # AbyssalTumbler
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.4.
+A One-Page-App that can parse abyssal modules (only damage modules for now) into groups with a pre-defined fitting-budget, displaying the total % dps increase per combination 
+
+Per default the local cachelayer is enabled, for that a service must be setup, e.g.: https://github.com/MadJaxon/esi_cachelayer
+
+
+## Angular-Stuff:
 
 ## Development server
 
