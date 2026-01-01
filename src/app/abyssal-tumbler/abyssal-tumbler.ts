@@ -148,9 +148,10 @@ export class AbyssalTumbler {
         const cpu = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 50)?.value;
         const pg = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 30)?.value;
         const dmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 64)?.value;
+        const missileDmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 213)?.value;
         const rofBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 204)?.value;
         if (
-          dmgMultiplier &&
+          (dmgMultiplier || missileDmgMultiplier) &&
           rofBonus &&
           cpu &&
           pg
@@ -162,7 +163,7 @@ export class AbyssalTumbler {
           }
           this.modules.push({
             index: index,
-            dmgMulti: dmgMultiplier,
+            dmgMulti: dmgMultiplier ? dmgMultiplier : (missileDmgMultiplier ? missileDmgMultiplier : 0),
             rofBonus: (1 - rofBonus) * 100,
             cpu: cpu,
             pg: pg,
