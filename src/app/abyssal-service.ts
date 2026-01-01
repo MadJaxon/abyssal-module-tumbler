@@ -26,8 +26,8 @@ type EsiItem = {
 })
 export class AbyssalService {
 
-  public useCacheLayer: boolean = true;
-  private readonly esiCacheUrl: string = 'http://localhost:3000';
+  public useCacheLayer: boolean = false;
+  public esiCacheUrl: string = 'http://localhost:3000';
   private readonly esiUrl: string = 'https://esi.evetech.net';
 
   constructor(private http: HttpClient) {

@@ -1,18 +1,34 @@
 <div class="container">
   <h1>Abyssal Module Tumbler</h1>
   <div id="cache">
-    <label for="cacheLayer">Use local ESI-CacheLayer?</label>
-    <input id="cacheLayer" #cacheLayer type="checkbox" [checked]="useCacheLayer" (change)="updateCacheLayer(cacheLayer.checked)" />
+    <label for="cacheLayer">Use ESI-CacheLayer?</label>
+    <input
+      id="cacheLayer"
+      #cacheLayer
+      type="checkbox"
+      [checked]="useCacheLayer"
+      (change)="updateCacheLayer(cacheLayer.checked)"
+    />
+    @if (useCacheLayer) {
+      <br />
+      <input
+        id="cacheLayerUrlInput"
+        #cacheLayerUrlInput
+        type="url"
+        [(ngModel)]="cacheLayerUrl"
+        (change)="updateCacheLayerUrl(cacheLayerUrlInput.value)"
+      />
+    }
   </div>
   <div class="inputs">
     <label>Fitting Budget CPU (tf):</label>
-    <input type="number" [(ngModel)]="cpuBudget" placeholder="Enter CPU budget">
+    <input type="number" [(ngModel)]="cpuBudget" placeholder="Enter CPU budget" />
 
     <label>Fitting Budget Powergrid (MW):</label>
-    <input type="number" [(ngModel)]="pgBudget" placeholder="Enter Powergrid budget">
+    <input type="number" [(ngModel)]="pgBudget" placeholder="Enter Powergrid budget" />
 
     <label>Number of Modules Required:</label>
-    <input type="number" [(ngModel)]="numModules" placeholder="Enter number of modules">
+    <input type="number" [(ngModel)]="numModules" placeholder="Enter number of modules" />
 
     <label>Paste (multiple) modules:</label>
     <textarea
@@ -32,10 +48,10 @@
       </div>
     }
     <div>
-      <label>CPU:</label><input #cpu type="number">
-      <label>PG:</label><input #pg type="number">
-      <label>DmgMulti:</label><input #dmgMulti type="number">
-      <label>RofBonus:</label><input #rofBonus type="number">
+      <label>CPU:</label><input #cpu type="number" />
+      <label>PG:</label><input #pg type="number" />
+      <label>DmgMulti:</label><input #dmgMulti type="number" />
+      <label>RofBonus:</label><input #rofBonus type="number" />
       <button (click)="addModule(cpu, pg, dmgMulti, rofBonus)">Add</button>
     </div>
 

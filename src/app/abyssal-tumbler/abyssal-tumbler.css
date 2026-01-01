@@ -1,5 +1,4 @@
 .container {
-  /*max-width: 900px;*/
   position: relative;
   margin: 0 auto;
   padding: 20px;
@@ -65,7 +64,7 @@ button.add:hover {
   background-color: #1a7f37;
 }
 
-button.calculate {  /* For your big Calculate button */
+button.calculate {
   padding: 14px;
   font-size: 18px;
   margin-top: 10px;
@@ -124,4 +123,8 @@ tr:nth-child(even) {
   position: absolute;
   top: 0;
   right: 0;
+}
+
+#cacheLayerUrlInput {
+  width: 88%;
 }

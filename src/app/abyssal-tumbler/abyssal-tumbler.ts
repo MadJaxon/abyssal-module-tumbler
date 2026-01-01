@@ -37,7 +37,8 @@ export class AbyssalTumbler {
   public modules: Module[] = [];
   public results: Result[] = [];
   public errorMessage: string = '';
-  public useCacheLayer: boolean = true;
+  public useCacheLayer: boolean = false;
+  public cacheLayerUrl: string = 'http://localhost:3000';
 
   constructor(
     private abyssalService: AbyssalService,
@@ -57,6 +58,20 @@ export class AbyssalTumbler {
   public updateCacheLayer(toogle: boolean) {
     this.useCacheLayer = toogle;
     this.abyssalService.useCacheLayer = this.useCacheLayer;
+  }
+
+  public updateCacheLayerUrl(url: string): void {
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch (_) {
+      return;
+    }
+    console.log(urlObj);
+    if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+      this.cacheLayerUrl = url;
+      this.abyssalService.esiCacheUrl = url;
+    }
   }
 
   public addModule(

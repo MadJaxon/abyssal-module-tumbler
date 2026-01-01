@@ -2,7 +2,7 @@
 
 A One-Page-App that can parse abyssal modules (only damage modules for now) into groups with a pre-defined fitting-budget, displaying the total % dps increase per combination 
 
-Per default the local cachelayer is enabled, for that a service must be setup, e.g.: https://github.com/MadJaxon/esi_cachelayer
+Per default the local cachelayer is disabled, for that to work a corresponding cache service must be setup, e.g.: https://github.com/MadJaxon/esi_cachelayer
 
 
 ## Angular-Stuff:
