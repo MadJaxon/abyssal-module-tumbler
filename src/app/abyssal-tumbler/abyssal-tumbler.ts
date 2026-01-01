@@ -167,15 +167,14 @@ export class AbyssalTumbler {
             cpu: cpu,
             pg: pg,
             itemId: item.itemId
-          })
+          });
         }
       });
     } catch (e: any) {
       console.error('Error fetching from ESI:', e);
       this.errorMessage = '' + e.message;
-      this.cdr.detectChanges();
-      return;
     }
+    this.cdr.detectChanges();
   }
 
   public calculateCombinations() {
