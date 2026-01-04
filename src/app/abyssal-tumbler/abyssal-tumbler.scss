@@ -137,11 +137,12 @@ tr:nth-child(even) {
     align-items: center;
     margin-bottom: 1em;
     .moduleTabHeader {
-      padding: 1em 2em;
+      padding: 1em 0;
       border: 1px solid var(--border);
       border-top-left-radius: 1em;
       border-top-right-radius: 1em;
-
+      flex: 1;
+      text-align: center;
       cursor: pointer;
     }
     .moduleTabHeader.active {

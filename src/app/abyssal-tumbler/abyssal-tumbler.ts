@@ -2,72 +2,16 @@ import {ChangeDetectorRef, Component} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {DecimalPipe, JsonPipe} from '@angular/common';
 import {AbyssalService} from '../abyssal-service';
-
-type AbyssalModuleType = 'dps'|'sb'|'neut'|'nos'|'battery'|'ab'|'mwd';
-
-interface Module {
-  type: AbyssalModuleType;
-  cpu: number;
-  pg: number;
-  index: number;
-  itemId?: string;
-}
-interface ActiveModule extends Module {
-  activationCost: number;
-  activationTime: number;
-}
-
-interface DpsModule extends Module {
-  dmgMulti: number;
-  rofBonus: number;
-}
-
-interface NosModule extends Module {
-  activationTime: number;
-  range: number;
-  drainAmount: number;
-}
-
-interface NeutModule extends ActiveModule {
-  range: number;
-  neutAmount: number;
-}
-
-interface SmartbombModule extends ActiveModule {
-  range: number;
-  damage: number;
-}
-
-interface BatteryModule extends Module {
-  capacitorBonus: number;
-  drainResistanceBonus: number;
-}
-
-interface AfterburnerModule extends ActiveModule {
-  velocityBonus: number;
-}
-
-interface MircowarpModule extends AfterburnerModule {
-  signatureRadiusModifier: number;
-}
-
-interface Result {
-  id: number;
-  modules: {
-    type: AbyssalModuleType;
-    index: number;
-  }[];
-  totalCpu: number;
-  totalPg: number;
-  dpsIncrease: number;
-  smartbombDps: number;
-  smartbombGjs: number;
-  neutAmount: number;
-  neutGjs: number;
-  neutRange: number;
-  nosAmount: number;
-  nosRange: number;
-}
+import {TableSortIcon} from './table-sort-icon/table-sort-icon';
+import {
+  AbyssalModuleType, ActiveModule, AfterburnerModule,
+  BatteryModule,
+  DpsModule, MircowarpModule, Module,
+  NeutModule,
+  NosModule, Result,
+  SmartbombModule,
+  TableSorter
+} from '../interfaces';
 
 
 @Component({
@@ -75,7 +19,8 @@ interface Result {
   imports: [
     FormsModule,
     DecimalPipe,
-    JsonPipe
+    JsonPipe,
+    TableSortIcon
   ],
   templateUrl: './abyssal-tumbler.html',
   styleUrl: './abyssal-tumbler.scss',
@@ -86,16 +31,17 @@ export class AbyssalTumbler {
   public readonly abyssalModuleTranslations: {[key: string]: string} = {
     'dps': 'DPS-Module',
     'sb': 'Smartbombs',
-    'neut': 'Cap-Neutralizer',
-    'nos': 'Cap-Nosferatu',
+    'neut': 'Neutralizer',
+    'nos': 'Nosferatu',
     'battery': 'Cap Battery',
     'ab': 'Afterburner',
     'mwd': 'Microwarpdrive'
   };
   public currentAbyssalModuleType = 'dps';
 
-  public debug: boolean = true; // toggle for local debugging
+  public debug: boolean = false; // toggle for local debugging
   public debugData?: any;
+  public sorts: {[key: string]: TableSorter} = {};
 
   public cpuBudget: number = 100;
   public pgBudget: number = 100;
@@ -115,7 +61,6 @@ export class AbyssalTumbler {
   public batteryModules: BatteryModule[] = [];
   public abModules: AfterburnerModule[] = [];
   public mwdModules: MircowarpModule[] = [];
-  // public modules: Module[] = [];
   public results: Result[] = [];
   public errorMessage: string = '';
   public useCacheLayer: boolean = false;
@@ -714,6 +659,9 @@ export class AbyssalTumbler {
   }
 
   public hasModuleType(type: string): boolean {
+    if (this.numModules[type] === 0) {
+      return false;
+    }
     switch (type) {
       case 'dps':
         return this.dpsModules.length > 0;
@@ -732,6 +680,36 @@ export class AbyssalTumbler {
       default:
         return false;
     }
+  }
+
+  public multiSort(sorters: {[key: string]: TableSorter}): void {
+    this.sorts = sorters;
+    this.results = this.results.sort((a, b) => {
+      for (const sorter of Object.values(sorters)) {
+        let valA = a[sorter.key];
+        let valB = b[sorter.key];
+
+        // Handle null/undefined
+        if (valA == null && valB == null) continue;
+        if (valA == null) return sorter.direction === 'asc' ? -1 : 1;
+        if (valB == null) return sorter.direction === 'asc' ? 1 : -1;
+
+        // Numeric comparison
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          if (valA < valB) return sorter.direction === 'asc' ? -1 : 1;
+          if (valA > valB) return sorter.direction === 'asc' ? 1 : -1;
+          continue;
+        }
+
+        // Fallback to string comparison for other types
+        const strA = String(valA).toLowerCase();
+        const strB = String(valB).toLowerCase();
+        if (strA < strB) return sorter.direction === 'asc' ? -1 : 1;
+        if (strA > strB) return sorter.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+    this.cdr.detectChanges();
   }
 
   public calculateCombinations() {
@@ -812,29 +790,8 @@ export class AbyssalTumbler {
       }
     });
 
-    this.results.sort((a, b) => b.dpsIncrease - a.dpsIncrease);
+    this.multiSort(this.sorts);
   }
-
-  // private generateCombinations(modules: Module[], start = 0, current: Module[] = []): Module[][] {
-  //   // if (current.length === minimumCount) {
-  //   //   return [current.slice()];
-  //   // }
-  //   const result: Module[][] = [];
-  //   for (let i = start; i < modules.length; i++) {
-  //     current.push(modules[i]);
-  //     result.push(...this.generateCombinations(modules, i + 1, current));
-  //     current.pop();
-  //   }
-  //   return result;
-  // }
-  //
-  // private addModuleToCombination(module: Module, combination: Module[]): Module[] {
-  //   if (combination.filter(m => m.type === module.type).length < this.numModules[module.type]) {
-  //     combination.push(module);
-  //   }
-  //   return combination;
-  // }
-
 
 
   // First, define a function to generate all combinations of size r from an array

@@ -252,25 +252,55 @@
         <thead>
         <tr>
           <th>Modules</th>
-          <th>Total CPU</th>
-          <th>Total PG</th>
+          <th>
+            Total CPU
+            <app-table-sort-icon [sorts]="sorts" [type]="'totalCpu'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+          </th>
+          <th>
+            Total PG
+            <app-table-sort-icon [sorts]="sorts" [type]="'totalPg'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+          </th>
           @if (hasModuleType('dps')) {
-            <th>DPS Increase (%)</th>
+            <th>
+              DPS Increase (%)
+              <app-table-sort-icon [sorts]="sorts" [type]="'dpsIncrease'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
           }
           @if (hasModuleType('sb')) {
-            <th>Smartbomb DPS</th>
-            <th>Smartbomb GJ/s</th>
+            <th>
+              Smartbomb DPS
+              <app-table-sort-icon [sorts]="sorts" [type]="'smartbombDps'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Smartbomb GJ/s
+              <app-table-sort-icon [sorts]="sorts" [type]="'smartbombGjs'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
             <th>Smartbomb DPS/GJ</th>
           }
           @if (hasModuleType('neut')) {
-            <th>Neut Amount</th>
-            <th>Neut GJ/s (cost)</th>
+            <th>
+              Neut Amount
+              <app-table-sort-icon [sorts]="sorts" [type]="'neutAmount'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Neut GJ/s (cost)
+              <app-table-sort-icon [sorts]="sorts" [type]="'neutGjs'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
             <th>Neutralized/GJ/s</th>
-            <th>Average Range</th>
+            <th>
+              Average Range
+              <app-table-sort-icon [sorts]="sorts" [type]="'neutRange'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
           }
           @if (hasModuleType('nos')) {
-            <th>Drain Amount</th>
-            <th>Average Range</th>
+            <th>
+              Drain Amount
+              <app-table-sort-icon [sorts]="sorts" [type]="'nosAmount'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Average Range
+              <app-table-sort-icon [sorts]="sorts" [type]="'nosRange'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
           }
         </tr>
         </thead>
