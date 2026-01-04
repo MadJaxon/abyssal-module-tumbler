@@ -256,7 +256,6 @@
     <button (click)="calculateCombinations()">Calculate Combinations</button>
   </div>
 
-<!--  @if (results.length > 0) {-->
     <div class="results">
       <h2>Possible Combinations ({{resultLength}} found)</h2>
       <cdk-virtual-scroll-viewport autosize class="virtual-scroll-container">
@@ -352,15 +351,16 @@
               <app-table-sort-icon [sorts]="sorts" [type]="'mwdSignature'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
             </th>
           }
-          <th>
-            Total GJ/s
-            <app-table-sort-icon [sorts]="sorts" [type]="'totalGj'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
-          </th>
+          @if (hasCapCost()) {
+            <th>
+              Total GJ/s
+              <app-table-sort-icon [sorts]="sorts" [type]="'totalGj'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+          }
         </tr>
         </thead>
         <tbody>
         <ng-container *cdkVirtualFor="let result of $results | async; trackBy: trackById">
-<!--          @for(result of results; track result.id) {-->
             <tr>
               <td>
                 @for (module of result.modules; track (module.index + '_' + module.type)) {
@@ -405,19 +405,19 @@
                 <td>{{result.mwdGj | number:'1.2-2'}}</td>
                 <td>{{result.mwdSignature | number:'1.2-2'}}%</td>
               }
-              <td>{{result.totalGj | number:'1.2-2'}}</td>
+              @if (hasCapCost()) {
+                <td>{{result.totalGj | number:'1.2-2'}}</td>
+              }
             </tr>
-<!--          }-->
         </ng-container>
         </tbody>
       </table>
       </cdk-virtual-scroll-viewport>
     </div>
-<!--  }-->
 </div>
-@if (debug) {
-  <pre>{{ debugData | json}}</pre>
-}
+<!--@if (debug) {-->
+<!--  <pre>{{ debugData | json}}</pre>-->
+<!--}-->
 @if (errorMessage) {
   <div class="error">
     {{errorMessage}}

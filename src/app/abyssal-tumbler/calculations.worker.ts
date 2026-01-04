@@ -146,7 +146,7 @@ function findCombinations(data: WorkerCalcCombinationsData) {
       const mwdSignature = Math.max(...mwds.map(ab=> ab.signatureRadiusModifier));
 
 
-      const totalGj = smartbombGjs + neutGjs + Math.max(abGj, mwdGj);
+      const totalGj = Math.max(0, smartbombGjs) + Math.max(0, neutGjs) + Math.max(0, abGj, mwdGj);
 
       results.push({
         id: index,

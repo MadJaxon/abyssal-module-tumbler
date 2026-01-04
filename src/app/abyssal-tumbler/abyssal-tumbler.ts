@@ -675,6 +675,16 @@ export class AbyssalTumbler {
     collection.push(module);
   }
 
+  public hasCapCost() {
+    const moduleTypes: AbyssalModuleType[] = [
+      'neut',
+      'sb',
+      'ab',
+      'mwd'
+    ]
+    return moduleTypes.some(type => this.numModules[type] > 0);
+  }
+
   public hasModuleType(type: AbyssalModuleType): boolean {
     if (this.numModules[type] === 0) {
       return false;
