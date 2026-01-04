@@ -258,9 +258,10 @@
     <button (click)="calculateCombinations()">Calculate Combinations</button>
   </div>
 
-  @if (results.length > 0) {
+<!--  @if (results.length > 0) {-->
     <div class="results">
-      <h2>Possible Combinations ({{results.length}} found)</h2>
+      <h2>Possible Combinations ({{resultLength}} found)</h2>
+      <cdk-virtual-scroll-viewport autosize class="virtual-scroll-container">
       <table>
         <thead>
         <tr>
@@ -360,7 +361,8 @@
         </tr>
         </thead>
         <tbody>
-          @for(result of results; track result.id) {
+        <ng-container *cdkVirtualFor="let result of $results | async; trackBy: trackById">
+<!--          @for(result of results; track result.id) {-->
             <tr>
               <td>
                 @for (module of result.modules; track (module.index + '_' + module.type)) {
@@ -407,11 +409,13 @@
               }
               <td>{{result.totalGj | number:'1.2-2'}}</td>
             </tr>
-          }
+<!--          }-->
+        </ng-container>
         </tbody>
       </table>
+      </cdk-virtual-scroll-viewport>
     </div>
-  }
+<!--  }-->
 </div>
 @if (debug) {
   <pre>{{ debugData | json}}</pre>

@@ -1,6 +1,6 @@
-import {ChangeDetectorRef, Component} from '@angular/core';
+import {ChangeDetectorRef, Component, ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
-import {DecimalPipe, JsonPipe} from '@angular/common';
+import {AsyncPipe, DecimalPipe} from '@angular/common';
 import {AbyssalService} from '../abyssal-service';
 import {TableSortIcon} from './table-sort-icon/table-sort-icon';
 import {
@@ -17,6 +17,9 @@ import {
   SmartbombModule,
   TableSorter, WorkerCommand, WorkerCalcCombinationsData, WorkerSortData
 } from '../interfaces';
+import {BehaviorSubject} from 'rxjs';
+import { CdkVirtualForOf, ScrollingModule as StandardScrollingModule} from '@angular/cdk/scrolling';
+import {CdkAutoSizeVirtualScroll, ScrollingModule } from '@angular/cdk-experimental/scrolling';
 
 
 @Component({
@@ -24,13 +27,19 @@ import {
   imports: [
     FormsModule,
     DecimalPipe,
-    JsonPipe,
-    TableSortIcon
+    TableSortIcon,
+    StandardScrollingModule,
+    ScrollingModule,
+    CdkVirtualForOf,
+    AsyncPipe,
+    CdkAutoSizeVirtualScroll
   ],
   templateUrl: './abyssal-tumbler.html',
   styleUrl: './abyssal-tumbler.scss',
 })
 export class AbyssalTumbler {
+
+  @ViewChild(CdkAutoSizeVirtualScroll) viewport!: CdkAutoSizeVirtualScroll;
 
   public readonly abyssalModuleTypes: AbyssalModuleType[] = ['dps', 'sb', 'neut', 'nos', 'battery', 'ab', 'mwd'];
   public readonly abyssalModuleTranslations: {[key: string]: string} = {
@@ -46,7 +55,7 @@ export class AbyssalTumbler {
 
   public isCalculating: boolean = false;
   public calcProgress: number = 0;
-  public debug: boolean = true; // toggle for local debugging
+  public debug: boolean = false; // toggle for local debugging
   public debugData?: any;
   public sorts: {[key: string]: TableSorter} = {};
 
@@ -68,7 +77,8 @@ export class AbyssalTumbler {
   public batteryModules: BatteryModule[] = [];
   public abModules: AfterburnerModule[] = [];
   public mwdModules: MircowarpModule[] = [];
-  public results: Result[] = [];
+  public resultLength: number = 0;
+  public $results: BehaviorSubject<Result[]> = new BehaviorSubject<Result[]>([]);
   public errorMessage: string = '';
   public useCacheLayer: boolean = false;
   public cacheLayerUrl: string = 'http://localhost:3000';
@@ -689,6 +699,10 @@ export class AbyssalTumbler {
     }
   }
 
+  public trackById(index: number, result: Result) {
+    return result.id;
+  }
+
   public multiSort(sorters: {[key: string]: TableSorter}): void {
     this.sorts = sorters;
     this.isCalculating = true;
@@ -697,13 +711,13 @@ export class AbyssalTumbler {
     this.startWorker({
       action: 'sort',
       data: {
-        results: this.results,
+        results: this.$results.getValue(),
         sorts: Object.values(this.sorts)
       } as WorkerSortData
     },
     (event) => {
-      debugger
-      this.results = event.data.data.results;
+      this.$results.next(event.data.data.results);
+      this.resultLength = event.data.data.results.length;
       this.calcProgress = 0;
       this.isCalculating = false;
       this.cdr.detectChanges();
@@ -713,7 +727,8 @@ export class AbyssalTumbler {
   }
 
   public calculateCombinations() {
-    this.results = [];
+    this.$results.next([]);
+    this.resultLength = 0;
     this.errorMessage = '';
 
     const totalModules = Object.keys(this.numModules).reduce((sum: number, type) => {
@@ -761,7 +776,8 @@ export class AbyssalTumbler {
           this.cdr.detectChanges();
           return false;
         } else {
-          this.results = event.data.data.results ?? [];
+          this.$results.next(event.data.data.results ?? []);
+          this.resultLength = event.data.data.results.length;
           this.isCalculating = false;
           this.calcProgress = 0;
           this.multiSort(this.sorts);
