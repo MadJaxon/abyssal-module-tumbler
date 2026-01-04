@@ -27,9 +27,6 @@
     <label>Fitting Budget Powergrid (MW):</label>
     <input type="number" [(ngModel)]="pgBudget" placeholder="Enter Powergrid budget" />
 
-    <label>Number of Modules Required:</label>
-    <input type="number" [(ngModel)]="numModules" placeholder="Enter number of modules" />
-
     <label>Paste (multiple) modules:</label>
     <textarea
       placeholder="[21:01:12] Mad Jaxon > <url=showinfo:78621//1048013997699>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1051772316207>Abyssal Vorton Tuning System</url>"
@@ -37,24 +34,214 @@
       (keyup)="parseChatMessage(chatMessage)"
     ></textarea>
 
-    @for (module of modules; track module.index) {
-      <div>
-        <b>#{{module.index}}&nbsp;</b>
-        <label>CPU:</label><input #cpu type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.cpu">
-        <label>PG:</label><input #pg type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.pg">
-        <label>DmgMulti:</label><input #dmgMulti type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.dmgMulti">
-        <label>RofBonus:</label><input #rofBonus type="number" (change)="updateModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.rofBonus">
-        <button (click)="removeModule(module.index)">Remove</button>
+    <div id="moduleTabs">
+      <div id="moduleTabsHeader">
+        @for (type of abyssalModuleTypes; track type) {
+          <div
+            class="moduleTabHeader"
+            [class.active]="type === currentAbyssalModuleType"
+            (click)="currentAbyssalModuleType = type"
+          >
+            {{ abyssalModuleTranslations[type] }}
+          </div>
+        }
       </div>
-    }
-    <div>
-      <label>CPU:</label><input #cpu type="number" />
-      <label>PG:</label><input #pg type="number" />
-      <label>DmgMulti:</label><input #dmgMulti type="number" />
-      <label>RofBonus:</label><input #rofBonus type="number" />
-      <button (click)="addModule(cpu, pg, dmgMulti, rofBonus)">Add</button>
-    </div>
 
+      <div
+        class="moduleTab"
+        [class.active]="'dps' === currentAbyssalModuleType"
+      >
+        <label>Number of DPS-Modules Required:</label>
+        <input type="number" [(ngModel)]="numModules['dps']" placeholder="Enter number of modules" />
+
+        @for (module of dpsModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateDpsModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateDpsModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.pg">
+            <label>DmgMulti:</label><input #dmgMulti type="number" (change)="updateDpsModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.dmgMulti">
+            <label>RofBonus:</label><input #rofBonus type="number" (change)="updateDpsModule(module.index, cpu.value, pg.value, dmgMulti.value, rofBonus.value)" [value]="module.rofBonus">
+            <button (click)="removeModule(dpsModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>DmgMulti:</label><input #dmgMulti type="number" />
+          <label>RofBonus:</label><input #rofBonus type="number" />
+          <button (click)="addDpsModule(cpu, pg, dmgMulti, rofBonus)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'sb' === currentAbyssalModuleType"
+      >
+        <label>Number of Smartbombs Required:</label>
+        <input type="number" [(ngModel)]="numModules['sb']" placeholder="Enter number of modules" />
+
+        @for (module of sbModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.pg">
+            <label>Activation Cost:</label><input #activationCost type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.activationCost">
+            <label>Activation Time:</label><input #activationTime type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.activationTime">
+            <label>Range:</label><input #range type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.range">
+            <label>Damage:</label><input #damage type="number" (change)="updateSmartbombModule(module.index, cpu.value, pg.value, activationCost.value, activationTime.value, range.value, damage.value)" [value]="module.damage">
+            <button (click)="removeModule(sbModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Activation Cost:</label><input #activationCost type="number" />
+          <label>Activation Time:</label><input #activationTime type="number" />
+          <label>Range:</label><input #range type="number" />
+          <label>Damage:</label><input #damage type="number" />
+          <button (click)="addSmartbombModule(cpu, pg, activationCost, activationTime, range, damage)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'neut' === currentAbyssalModuleType"
+      >
+        <label>Number of Neutralizers Required:</label>
+        <input type="number" [(ngModel)]="numModules['neut']" placeholder="Enter number of modules" />
+
+        @for (module of neutModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.pg">
+            <label>Activation Cost:</label><input #activationCost type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.activationCost">
+            <label>Activation Time:</label><input #activationTime type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.activationTime">
+            <label>Neut Amount:</label><input #neutAmount type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.neutAmount">
+            <label>Range:</label><input #range type="number" (change)="updateNeutModule(module.index, cpu.value, pg.value, activationTime.value, activationCost.value, neutAmount.value, range.value)" [value]="module.range">
+            <button (click)="removeModule(neutModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Activation Time:</label><input #activationTime type="number" />
+          <label>Activation Cost:</label><input #activationCost type="number" />
+          <label>Neut Amount:</label><input #neutAmount type="number" />
+          <label>Range:</label><input #range type="number" />
+          <button (click)="addNeutModule(cpu, pg, activationTime, activationCost, neutAmount, range)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'nos' === currentAbyssalModuleType"
+      >
+        <label>Number of Nosferatus Required:</label>
+        <input type="number" [(ngModel)]="numModules['nos']" placeholder="Enter number of modules" />
+
+        @for (module of nosModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateNosModule(module.index, cpu.value, pg.value, activationTime.value, drainAmount.value, range.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateNosModule(module.index, cpu.value, pg.value, activationTime.value, drainAmount.value, range.value)" [value]="module.pg">
+            <label>Activation Time:</label><input #activationTime type="number" (change)="updateNosModule(module.index, cpu.value, pg.value, activationTime.value, drainAmount.value, range.value)" [value]="module.activationTime">
+            <label>Drain Amount:</label><input #drainAmount type="number" (change)="updateNosModule(module.index, cpu.value, pg.value, activationTime.value, drainAmount.value, range.value)" [value]="module.drainAmount">
+            <label>Range:</label><input #range type="number" (change)="updateNosModule(module.index, cpu.value, pg.value, activationTime.value, drainAmount.value, range.value)" [value]="module.range">
+            <button (click)="removeModule(nosModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Activation Cost:</label><input #activationCost type="number" />
+          <label>Drain Amount:</label><input #drainAmount type="number" />
+          <label>Range:</label><input #range type="number" />
+          <button (click)="addNosModule(cpu, pg, activationCost, drainAmount, range)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'battery' === currentAbyssalModuleType"
+      >
+        <label>Number of Batteries Required:</label>
+        <input type="number" [(ngModel)]="numModules['battery']" placeholder="Enter number of modules" />
+
+        @for (module of batteryModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateBatteryModule(module.index, cpu.value, pg.value, capacitorBonus.value, drainResistanceBonus.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateBatteryModule(module.index, cpu.value, pg.value, capacitorBonus.value, drainResistanceBonus.value)" [value]="module.pg">
+            <label>Cap Bonus:</label><input #capacitorBonus type="number" (change)="updateBatteryModule(module.index, cpu.value, pg.value, capacitorBonus.value, drainResistanceBonus.value)" [value]="module.capacitorBonus">
+            <label>Drain Resistance:</label><input #drainResistanceBonus type="number" (change)="updateBatteryModule(module.index, cpu.value, pg.value, capacitorBonus.value, drainResistanceBonus.value)" [value]="module.drainResistanceBonus">
+            <button (click)="removeModule(batteryModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Cap Bonus:</label><input #capacitorBonus type="number" />
+          <label>Drain Resistance:</label><input #drainResistanceBonus type="number" />
+          <button (click)="addBatteryModule(cpu, pg, capacitorBonus, drainResistanceBonus)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'ab' === currentAbyssalModuleType"
+      >
+        <label>Number of Batteries Required:</label>
+        <input type="number" [(ngModel)]="numModules['ab']" placeholder="Enter number of modules" />
+
+        @for (module of abModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateAbModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateAbModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value)" [value]="module.pg">
+            <label>Activation Cost:</label><input #activationCost type="number" (change)="updateAbModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value)" [value]="module.activationCost">
+            <label>Velocity Bonus:</label><input #velocityBonus type="number" (change)="updateAbModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value)" [value]="module.velocityBonus">
+            <button (click)="removeModule(abModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Activation Cost:</label><input #activationCost type="number" />
+          <label>Velocity Bonus:</label><input #velocityBonus type="number" />
+          <button (click)="addAfterburnerModule(cpu, pg, activationCost, velocityBonus)">Add</button>
+        </div>
+      </div>
+
+      <div
+        class="moduleTab"
+        [class.active]="'mwd' === currentAbyssalModuleType"
+      >
+        <label>Number of Batteries Required:</label>
+        <input type="number" [(ngModel)]="numModules['mwd']" placeholder="Enter number of modules" />
+
+        @for (module of mwdModules; track module.index) {
+          <div>
+            <b>#{{module.index}}&nbsp;</b>
+            <label>CPU:</label><input #cpu type="number" (change)="updateMwdModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value, signatureRadiusModifier.value)" [value]="module.cpu">
+            <label>PG:</label><input #pg type="number" (change)="updateMwdModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value, signatureRadiusModifier.value)" [value]="module.pg">
+            <label>Activation Cost:</label><input #activationCost type="number" (change)="updateMwdModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value, signatureRadiusModifier.value)" [value]="module.activationCost">
+            <label>Velocity Bonus:</label><input #velocityBonus type="number" (change)="updateMwdModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value, signatureRadiusModifier.value)" [value]="module.velocityBonus">
+            <label>Signature Modifier:</label><input #signatureRadiusModifier type="number" (change)="updateMwdModule(module.index, cpu.value, pg.value, activationCost.value, velocityBonus.value, signatureRadiusModifier.value)" [value]="module.signatureRadiusModifier">
+            <button (click)="removeModule(mwdModules, module.index)">Remove</button>
+          </div>
+        }
+        <div>
+          <label>CPU:</label><input #cpu type="number" />
+          <label>PG:</label><input #pg type="number" />
+          <label>Activation Cost:</label><input #activationCost type="number" />
+          <label>Velocity Bonus:</label><input #velocityBonus type="number" />
+          <label>Signature Modifier:</label><input #signatureRadiusModifier type="number" />
+          <button (click)="addMwdModule(cpu, pg, activationCost, velocityBonus, signatureRadiusModifier)">Add</button>
+        </div>
+      </div>
+
+    </div>
     <button (click)="calculateCombinations()">Calculate Combinations</button>
   </div>
 
@@ -67,16 +254,54 @@
           <th>Modules</th>
           <th>Total CPU</th>
           <th>Total PG</th>
-          <th>DPS Increase (%)</th>
+          @if (hasModuleType('dps')) {
+            <th>DPS Increase (%)</th>
+          }
+          @if (hasModuleType('sb')) {
+            <th>Smartbomb DPS</th>
+            <th>Smartbomb GJ/s</th>
+            <th>Smartbomb DPS/GJ</th>
+          }
+          @if (hasModuleType('neut')) {
+            <th>Neut Amount</th>
+            <th>Neut GJ/s (cost)</th>
+            <th>Neutralized/GJ/s</th>
+            <th>Average Range</th>
+          }
+          @if (hasModuleType('nos')) {
+            <th>Drain Amount</th>
+            <th>Average Range</th>
+          }
         </tr>
         </thead>
         <tbody>
           @for(result of results; track result.id) {
             <tr>
-              <td>{{result.modules.join(', ')}}</td>
+              <td>
+                @for (module of result.modules; track (module.index + '_' + module.type)) {
+                  {{abyssalModuleTranslations[module.type]}}:{{module.index}}&nbsp;
+                }
+              </td>
               <td>{{result.totalCpu}} tf</td>
               <td>{{result.totalPg}} MW</td>
-              <td>{{result.dpsIncrease | number:'1.2-2'}}%</td>
+              @if (hasModuleType('dps')) {
+                <td>{{result.dpsIncrease | number:'1.2-2'}}%</td>
+              }
+              @if (hasModuleType('sb')) {
+                <td>{{result.smartbombDps | number:'1.1-1'}}</td>
+                <td>{{result.smartbombGjs | number:'1.1-1'}}</td>
+                <td>{{(result.smartbombDps / result.smartbombGjs) | number:'1.1-1'}}</td>
+              }
+              @if (hasModuleType('neut')) {
+                <td>{{result.neutAmount | number:'1.1-1'}}</td>
+                <td>{{result.neutGjs | number:'1.1-1'}}</td>
+                <td>{{(result.neutAmount / result.neutGjs) | number:'1.1-1'}}</td>
+                <td>{{result.neutRange | number:'1.1-1'}}</td>
+              }
+              @if (hasModuleType('nos')) {
+                <td>{{result.nosAmount | number:'1.1-1'}}</td>
+                <td>{{result.nosRange | number:'1.1-1'}}</td>
+              }
             </tr>
           }
         </tbody>
@@ -84,6 +309,9 @@
     </div>
   }
 </div>
+@if (debug) {
+  <pre>{{ debugData | json}}</pre>
+}
 @if (errorMessage) {
   <div class="error">
     {{errorMessage}}

@@ -26,6 +26,7 @@ input, select, textarea {
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
+  margin: 5px;
 }
 
 input:focus, select:focus {
@@ -127,4 +128,34 @@ tr:nth-child(even) {
 
 #cacheLayerUrlInput {
   width: 88%;
+}
+
+#moduleTabs {
+  #moduleTabsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1em;
+    .moduleTabHeader {
+      padding: 1em 2em;
+      border: 1px solid var(--border);
+      border-top-left-radius: 1em;
+      border-top-right-radius: 1em;
+
+      cursor: pointer;
+    }
+    .moduleTabHeader.active {
+      background-color: var(--bg-card);
+    }
+    .moduleTabHeader:hover:not(.active) {
+      background-color: var(--bg-secondary);
+    }
+  }
+
+  div.moduleTab {
+    display: none;
+  }
+  div.moduleTab.active {
+    display: block;
+  }
 }
