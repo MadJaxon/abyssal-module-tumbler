@@ -29,6 +29,13 @@ input, select, textarea {
   margin: 5px;
 }
 
+a {
+  color: var(--text-primary);
+}
+a:hover {
+  color: var(--text-secondary);
+}
+
 input:focus, select:focus {
   outline: none;
   border-color: var(--accent);
@@ -158,5 +165,59 @@ tr:nth-child(even) {
   }
   div.moduleTab.active {
     display: block;
+  }
+}
+
+#loadingSpinner:not(.loading) {
+  display: none;
+}
+
+#loadingSpinner {
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.3);
+
+  #loadingContainer {
+    position: relative;
+    text-align: center;
+    width: 100vw;
+    height: 100vh;
+    #arrow {
+      font-size: 3em;
+      position: fixed;
+      top: calc(50vh - 1.5em);
+      left: calc(50vw);
+    }
+    #arrow {
+      animation: spin 2s linear infinite;
+    }
+
+    @-webkit-keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @-moz-keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @-o-keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
   }
 }

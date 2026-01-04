@@ -1,3 +1,13 @@
+<div id="loadingSpinner" [class.loading]="isCalculating">
+  <div id="loadingContainer">
+    <span id="arrow">⟳</span><br/>
+    @if (calcProgress === -1) {
+      <span id="progress">Sorting...</span>
+    } @else {
+      <span id="progress">Found {{calcProgress}} combinations so far...</span>
+    }
+  </div>
+</div>
 <div class="container">
   <h1>Abyssal Module Tumbler</h1>
   <div id="cache">
@@ -9,6 +19,7 @@
       [checked]="useCacheLayer"
       (change)="updateCacheLayer(cacheLayer.checked)"
     />
+    <small><a target="_blank" href="https://github.com/MadJaxon/esi_cachelayer">?</a> </small>
     @if (useCacheLayer) {
       <br />
       <input
@@ -32,7 +43,9 @@
       placeholder="[21:01:12] Mad Jaxon > <url=showinfo:78621//1048013997699>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1051772316207>Abyssal Vorton Tuning System</url>"
       #chatMessage
       (keyup)="parseChatMessage(chatMessage)"
-    ></textarea>
+    >
+[21:01:12] Mad Jaxon > <url=showinfo:78621//1048013997699>Abyssal Vorton Tuning System</url>  <url=showinfo:78621//1051772316207>Abyssal Vorton Tuning System</url>
+    </textarea>
 
     <div id="moduleTabs">
       <div id="moduleTabsHeader">
@@ -276,6 +289,10 @@
               <app-table-sort-icon [sorts]="sorts" [type]="'smartbombGjs'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
             </th>
             <th>Smartbomb DPS/GJ</th>
+            <th>
+              Avg. SmartbombRange
+              <app-table-sort-icon [sorts]="sorts" [type]="'smartbombRange'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
           }
           @if (hasModuleType('neut')) {
             <th>
@@ -302,6 +319,44 @@
               <app-table-sort-icon [sorts]="sorts" [type]="'nosRange'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
             </th>
           }
+          @if (hasModuleType('battery')) {
+            <th>
+              Capacitor Bonus
+              <app-table-sort-icon [sorts]="sorts" [type]="'capBonus'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Drain Resistance
+              <app-table-sort-icon [sorts]="sorts" [type]="'drainResistance'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+          }
+          @if (hasModuleType('ab')) {
+            <th>
+              Max AB-Velocity
+              <app-table-sort-icon [sorts]="sorts" [type]="'abVelocity'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Max AB-GJ/s
+              <app-table-sort-icon [sorts]="sorts" [type]="'abGj'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+          }
+          @if (hasModuleType('mwd')) {
+            <th>
+              Max MWD-Velocity
+              <app-table-sort-icon [sorts]="sorts" [type]="'mwdVelocity'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Max MWD-GJ/s
+              <app-table-sort-icon [sorts]="sorts" [type]="'mwdGj'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+            <th>
+              Max MWD-SigModifier
+              <app-table-sort-icon [sorts]="sorts" [type]="'mwdSignature'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+            </th>
+          }
+          <th>
+            Total GJ/s
+            <app-table-sort-icon [sorts]="sorts" [type]="'totalGj'" (onSortChange)="multiSort($event)"></app-table-sort-icon>
+          </th>
         </tr>
         </thead>
         <tbody>
@@ -309,7 +364,11 @@
             <tr>
               <td>
                 @for (module of result.modules; track (module.index + '_' + module.type)) {
-                  {{abyssalModuleTranslations[module.type]}}:{{module.index}}&nbsp;
+                  @if (module.itemId) {
+                    <a target="_blank" href="https://mutamarket.com/modules/{{module.itemId}}">{{abyssalModuleTranslations[module.type]}}:{{module.index}}</a>&nbsp;
+                  } @else {
+                    <span>{{abyssalModuleTranslations[module.type]}}:{{module.index}}</span>&nbsp;
+                  }
                 }
               </td>
               <td>{{result.totalCpu}} tf</td>
@@ -321,6 +380,7 @@
                 <td>{{result.smartbombDps | number:'1.1-1'}}</td>
                 <td>{{result.smartbombGjs | number:'1.1-1'}}</td>
                 <td>{{(result.smartbombDps / result.smartbombGjs) | number:'1.1-1'}}</td>
+                <td>{{result.smartbombRange | number:'1.1-1'}}</td>
               }
               @if (hasModuleType('neut')) {
                 <td>{{result.neutAmount | number:'1.1-1'}}</td>
@@ -332,6 +392,20 @@
                 <td>{{result.nosAmount | number:'1.1-1'}}</td>
                 <td>{{result.nosRange | number:'1.1-1'}}</td>
               }
+              @if (hasModuleType('battery')) {
+                <td>{{result.capBonus | number:'1.0-0'}}</td>
+                <td>{{result.drainResistance | number:'1.2-2'}}%</td>
+              }
+              @if (hasModuleType('ab')) {
+                <td>{{result.abVelocity | number:'1.2-2'}}</td>
+                <td>{{result.abGj | number:'1.2-2'}}</td>
+              }
+              @if (hasModuleType('mwd')) {
+                <td>{{result.mwdVelocity | number:'1.2-2'}}</td>
+                <td>{{result.mwdGj | number:'1.2-2'}}</td>
+                <td>{{result.mwdSignature | number:'1.2-2'}}%</td>
+              }
+              <td>{{result.totalGj | number:'1.2-2'}}</td>
             </tr>
           }
         </tbody>

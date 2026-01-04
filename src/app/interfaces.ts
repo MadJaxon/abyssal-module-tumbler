@@ -46,25 +46,71 @@ export interface MircowarpModule extends AfterburnerModule {
   signatureRadiusModifier: number;
 }
 
+export interface ResultModule {
+  type: AbyssalModuleType;
+  index: number;
+  itemId?: string;
+}
+
 export interface Result {
   id: number;
-  modules: {
-    type: AbyssalModuleType;
-    index: number;
-  }[];
+  modules: ResultModule[];
   totalCpu: number;
   totalPg: number;
   dpsIncrease: number;
   smartbombDps: number;
   smartbombGjs: number;
+  smartbombRange: number;
   neutAmount: number;
   neutGjs: number;
   neutRange: number;
   nosAmount: number;
   nosRange: number;
+  capBonus: number;
+  drainResistance: number;
+  abVelocity: number
+  abGj: number;
+  mwdVelocity: number;
+  mwdGj: number;
+  mwdSignature: number;
+  totalGj: number;
 }
 
 export interface TableSorter {
   key: keyof Result;
   direction: 'asc' | 'desc';
+}
+
+export interface WorkerSortData {
+  results: Result[];
+  sorts: TableSorter[];
+}
+
+export interface WorkerCalcCombinationsData {
+  cpuBudget: number,
+  pgBudget: number,
+  modules: {
+    dps: Module[],
+    sb: Module[],
+    neut: Module[],
+    nos: Module[],
+    battery: Module[],
+    ab: Module[],
+    mwd: Module[]
+  },
+  numModules: {[key: string]: number},
+  sorts: TableSorter[],
+  error?: string,
+  results?: Result[]
+}
+
+export interface WorkerCommand {
+  action: 'findCombinations'|'sort';
+  data: WorkerSortData|WorkerCalcCombinationsData|null|number;
+}
+
+export interface WorkerResult extends WorkerCommand {
+  action: 'findCombinations'|'sort';
+  isUpdate: boolean;
+  error?: string;
 }

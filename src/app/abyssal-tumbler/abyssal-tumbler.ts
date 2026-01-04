@@ -4,13 +4,18 @@ import {DecimalPipe, JsonPipe} from '@angular/common';
 import {AbyssalService} from '../abyssal-service';
 import {TableSortIcon} from './table-sort-icon/table-sort-icon';
 import {
-  AbyssalModuleType, ActiveModule, AfterburnerModule,
+  AbyssalModuleType,
+  ActiveModule,
+  AfterburnerModule,
   BatteryModule,
-  DpsModule, MircowarpModule, Module,
+  DpsModule,
+  MircowarpModule,
+  Module,
   NeutModule,
-  NosModule, Result,
+  NosModule,
+  Result,
   SmartbombModule,
-  TableSorter
+  TableSorter, WorkerCommand, WorkerCalcCombinationsData, WorkerSortData
 } from '../interfaces';
 
 
@@ -39,12 +44,14 @@ export class AbyssalTumbler {
   };
   public currentAbyssalModuleType = 'dps';
 
-  public debug: boolean = false; // toggle for local debugging
+  public isCalculating: boolean = false;
+  public calcProgress: number = 0;
+  public debug: boolean = true; // toggle for local debugging
   public debugData?: any;
   public sorts: {[key: string]: TableSorter} = {};
 
-  public cpuBudget: number = 100;
-  public pgBudget: number = 100;
+  public cpuBudget: number = 10000;
+  public pgBudget: number = 10000;
   public numModules:  {[key: string]: number} = {
     'dps': 0,
     'sb': 0,
@@ -617,7 +624,7 @@ export class AbyssalTumbler {
           velocityBonus
         ) {
           this.addNewModuleWithIndex(<AfterburnerModule>{
-            type: 'mwd',
+            type: 'ab',
             index: -1,
             activationTime: activationTime,
             activationCost: activationCost,
@@ -658,7 +665,7 @@ export class AbyssalTumbler {
     collection.push(module);
   }
 
-  public hasModuleType(type: string): boolean {
+  public hasModuleType(type: AbyssalModuleType): boolean {
     if (this.numModules[type] === 0) {
       return false;
     }
@@ -684,32 +691,25 @@ export class AbyssalTumbler {
 
   public multiSort(sorters: {[key: string]: TableSorter}): void {
     this.sorts = sorters;
-    this.results = this.results.sort((a, b) => {
-      for (const sorter of Object.values(sorters)) {
-        let valA = a[sorter.key];
-        let valB = b[sorter.key];
-
-        // Handle null/undefined
-        if (valA == null && valB == null) continue;
-        if (valA == null) return sorter.direction === 'asc' ? -1 : 1;
-        if (valB == null) return sorter.direction === 'asc' ? 1 : -1;
-
-        // Numeric comparison
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          if (valA < valB) return sorter.direction === 'asc' ? -1 : 1;
-          if (valA > valB) return sorter.direction === 'asc' ? 1 : -1;
-          continue;
-        }
-
-        // Fallback to string comparison for other types
-        const strA = String(valA).toLowerCase();
-        const strB = String(valB).toLowerCase();
-        if (strA < strB) return sorter.direction === 'asc' ? -1 : 1;
-        if (strA > strB) return sorter.direction === 'asc' ? 1 : -1;
-      }
-      return 0;
-    });
+    this.isCalculating = true;
+    this.calcProgress = -1;
     this.cdr.detectChanges();
+    this.startWorker({
+      action: 'sort',
+      data: {
+        results: this.results,
+        sorts: Object.values(this.sorts)
+      } as WorkerSortData
+    },
+    (event) => {
+      debugger
+      this.results = event.data.data.results;
+      this.calcProgress = 0;
+      this.isCalculating = false;
+      this.cdr.detectChanges();
+      return true;
+    }
+    );
   }
 
   public calculateCombinations() {
@@ -728,150 +728,71 @@ export class AbyssalTumbler {
       return;
     }
 
-    // const combinations = this.generateCombinations(allModules);
-    const combinations = this.generateLimitedCombinations({
-        'dps': this.dpsModules,
-        'sb': this.sbModules,
-        'neut': this.neutModules,
-        'nos': this.nosModules,
-        'battery': this.batteryModules,
-        'ab': this.abModules,
-        'mwd': this.mwdModules
-      },
-      this.numModules
-    );
-    combinations.forEach((comb, index) => {
-      const totalCpu = comb.reduce((sum, m) => sum + m.cpu, 0);
-      const totalPg = comb.reduce((sum, m) => sum + m.pg, 0);
-      if (totalCpu <= this.cpuBudget && totalPg <= this.pgBudget) {
-        const dpsIncrease = this.calculateDpsIncrease(comb.filter(m => m.type === 'dps') as DpsModule[]);
-
-        const smartbombs = comb.filter(m => m.type === 'sb') as SmartbombModule[];
-        const smartbombDps = smartbombs.reduce((carry: number, current)=> {
-          return carry + (current.damage / (current.activationTime / 1000));
-        }, 0);
-        const smartbombGjs = smartbombs.reduce((carry: number, current)=> {
-          return carry + (current.activationCost / (current.activationTime / 1000));
-        }, 0);
-
-        const neuts = comb.filter(m => m.type === 'neut') as NeutModule[];
-        const neutAmount = neuts.reduce((carry: number, current)=> {
-          return carry + (current.neutAmount / (current.activationTime / 1000));
-        }, 0);
-        const neutGjs = neuts.reduce((carry: number, current)=> {
-          return carry + (current.activationCost / (current.activationTime / 1000));
-        }, 0);
-        const neutRange = neuts.length === 0 ? 0 : neuts.reduce((carry: number, current)=> {
-          return carry + current.range;
-        }, 0) / neuts.length;
-
-        const noses = comb.filter(m => m.type === 'nos') as NosModule[];
-        const nosAmount = noses.reduce((carry: number, current)=> {
-          return carry + (current.drainAmount / (current.activationTime / 1000));
-        }, 0);
-        const nosRange = noses.length === 0 ? 0 : noses.reduce((carry: number, current)=> {
-          return carry + current.range;
-        }, 0) / noses.length;
-
-        this.results.push({
-          id: index,
-          modules: comb.map(m => ({type: m.type, index: m.index})) as {type: AbyssalModuleType, index: number}[],
-          totalCpu,
-          totalPg,
-          dpsIncrease,
-          smartbombDps,
-          smartbombGjs,
-          neutAmount,
-          neutGjs,
-          neutRange,
-          nosAmount,
-          nosRange
-        });
+    this.isCalculating = true;
+    this.calcProgress = 0;
+    this.cdr.detectChanges();
+    this.startWorker({
+      action: 'findCombinations',
+      data: <WorkerCalcCombinationsData>{
+        modules: {
+          dps: this.dpsModules,
+          sb: this.sbModules,
+          neut: this.neutModules,
+          nos: this.nosModules,
+          battery: this.batteryModules,
+          ab: this.abModules,
+          mwd: this.mwdModules
+        },
+        sorts: Object.values(this.sorts),
+        numModules: this.numModules,
+        cpuBudget: this.cpuBudget,
+        pgBudget: this.pgBudget
       }
-    });
-
-    this.multiSort(this.sorts);
-  }
-
-
-  // First, define a function to generate all combinations of size r from an array
-  private combinations(arr: Module[], r: number): Module[][] {
-    if (r === 0) {
-      return [[]];
-    }
-    if (arr.length < r) {
-      return [];
-    }
-    const result: Module[][] = [];
-    for (let i = 0; i <= arr.length - r; i++) {
-      const head = arr[i];
-      const tails = this.combinations(arr.slice(i + 1), r - 1);
-      for (const tail of tails) {
-        result.push([head, ...tail]);
-      }
-    }
-    return result;
-  }
-
-// Then, define a function for the Cartesian product that concatenates subsets
-  private cartesianProduct(subsetLists: Module[][][]): Module[][] {
-    return subsetLists.reduce((acc: Module[][], curr: Module[][]) => {
-      const res: Module[][] = [];
-      for (const a of acc) {
-        for (const b of curr) {
-          res.push([...a, ...b]);
+    }, (event) => {
+      if (event.data.error) {
+        console.log(event.data.error);
+        this.errorMessage = event.data.error;
+        this.isCalculating = false;
+        this.cdr.detectChanges();
+        return true;
+      } else {
+        if (event.data.isUpdate) {
+          this.calcProgress = event.data.data;
+          this.cdr.detectChanges();
+          return false;
+        } else {
+          this.results = event.data.data.results ?? [];
+          this.isCalculating = false;
+          this.calcProgress = 0;
+          this.multiSort(this.sorts);
+          return true;
         }
       }
-      return res;
-    }, [[]]);
+    })
   }
 
-// Now, the main function to generate all limited combinations
-  public generateLimitedCombinations(data: Record<string, Module[]>, limits: Record<string, number>): Module[][] {
-    const allSubsets: Record<string, any[][]> = {};
-    const keys = Object.keys(data);
+  private startWorker(command: WorkerCommand, callback: (event: MessageEvent) => boolean) {
+    const worker = new Worker(new URL('./calculations.worker.ts', import.meta.url), {type: "module"});
 
-    for (const key of keys) {
-      const arr = data[key];
-      const limit = limits[key] ?? 0; // Default to 0 if no limit specified
-      const subsets: any[][] = [];
-      for (let r = 0; r <= Math.min(limit, arr.length); r++) {
-        subsets.push(...this.combinations(arr, r));
+    console.log('Starting worker:' + command.action);
+    // Receive results
+    worker.onmessage = (event: MessageEvent) => {
+      if (callback(event)) {
+        worker.terminate();
+        console.log('End worker:' + command.action);
       }
-      allSubsets[key] = subsets;
-    }
+    };
 
-    const subsetLists = keys.map(key => allSubsets[key]);
-    const maxFilteredCombinations = this.cartesianProduct(subsetLists);
-    return maxFilteredCombinations.filter(set => {
-      return !Object.keys(this.numModules).some(type => set.filter(set => set.type === type).length !== this.numModules[type]);
-    });
-  }
-
-  private calculateDpsIncrease(modules: DpsModule[]): number {
-    let dmgBonuses: number[] = modules.map(m => m.dmgMulti - 1);
-    let rofBonuses: number[] = modules.map(m => m.rofBonus / 100); // Fractional reductions
-
-    // Sort descending for strongest first
-    dmgBonuses.sort((a, b) => b - a);
-    rofBonuses.sort((a, b) => b - a);
-
-    // Damage multipliers (product of (1 + penalized bonus))
-    let totalDmg = 1.0;
-    for (let i = 0; i < dmgBonuses.length; i++) {
-      const penalty = Math.exp( - Math.pow(i / 2.67, 2) );
-      totalDmg *= (1 + dmgBonuses[i] * penalty);
-    }
-
-    // Cycle time multipliers (product of (1 - penalized reduction)), then invert for DPS from RoF
-    let totalCycle = 1.0;
-    for (let i = 0; i < rofBonuses.length; i++) {
-      const penalty = Math.exp( - Math.pow(i / 2.67, 2) );
-      totalCycle *= (1 - rofBonuses[i] * penalty);
-    }
-    const totalRof = (totalCycle > 0) ? 1 / totalCycle : 1; // Avoid division by zero
-
-    const dpsMulti = totalDmg * totalRof;
-    return (dpsMulti - 1) * 100;
+    // Error handling
+    worker.onerror = (error) => {
+      debugger
+      console.error('Worker error:', error);
+      this.errorMessage = 'Calculation failed.';
+      this.isCalculating = false;
+      this.cdr.detectChanges();
+      worker.terminate();
+    };
+    // Send data to worker
+    worker.postMessage(command);
   }
 }
