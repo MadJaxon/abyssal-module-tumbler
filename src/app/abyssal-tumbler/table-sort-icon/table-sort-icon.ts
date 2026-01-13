@@ -29,10 +29,10 @@ export class TableSortIcon {
     if (!sort) {
       this.sorts[this.type] = <TableSorter>{
         key: this.type,
-        direction: 'asc'
+        direction: 'desc'
       };
-    } else if (this.sorts[this.type].direction === 'asc') {
-      this.sorts[this.type].direction = 'desc';
+    } else if (this.sorts[this.type].direction === 'desc') {
+      this.sorts[this.type].direction = 'asc';
     } else {
       delete this.sorts[this.type];
     }

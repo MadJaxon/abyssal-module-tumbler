@@ -84,6 +84,7 @@ export interface TableSorter {
 export interface WorkerSortData {
   results: Result[];
   sorts: TableSorter[];
+  makeUnique: boolean;
 }
 
 export interface WorkerCalcCombinationsData {

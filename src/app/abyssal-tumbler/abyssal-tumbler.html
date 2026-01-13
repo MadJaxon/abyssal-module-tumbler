@@ -30,6 +30,15 @@
         (change)="updateCacheLayerUrl(cacheLayerUrlInput.value)"
       />
     }
+    <br />
+    <label for="uniqueCombinations">Make combinations unique?</label>
+    <input
+      id="uniqueCombinationsCB"
+      #uniqueCombinationsCB
+      type="checkbox"
+      [checked]="uniqueCombinations"
+      (change)="updateUniqueCombinations(uniqueCombinationsCB.checked)"
+    />
   </div>
   <div class="inputs">
     <label>Fitting Budget CPU (tf):</label>
@@ -257,7 +266,7 @@
   </div>
 
     <div class="results">
-      <h2>Possible Combinations ({{resultLength}} found)</h2>
+      <h2>Possible Combinations ({{resultLength | number:'1.0-0'}} found)</h2>
       <cdk-virtual-scroll-viewport autosize class="virtual-scroll-container">
       <table>
         <thead>
@@ -360,7 +369,7 @@
         </tr>
         </thead>
         <tbody>
-        <ng-container *cdkVirtualFor="let result of $results | async; trackBy: trackById">
+        <ng-container *cdkVirtualFor="let result of $tableEntries | async; trackBy: trackById">
             <tr>
               <td>
                 @for (module of result.modules; track (module.index + '_' + module.type)) {

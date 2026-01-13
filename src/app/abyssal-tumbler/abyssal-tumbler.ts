@@ -78,10 +78,12 @@ export class AbyssalTumbler {
   public abModules: AfterburnerModule[] = [];
   public mwdModules: MircowarpModule[] = [];
   public resultLength: number = 0;
-  public $results: BehaviorSubject<Result[]> = new BehaviorSubject<Result[]>([]);
+  private results: Result[] = [];
+  public $tableEntries: BehaviorSubject<Result[]> = new BehaviorSubject<Result[]>([]);
   public errorMessage: string = '';
   public useCacheLayer: boolean = false;
   public cacheLayerUrl: string = 'http://localhost:3000';
+  public uniqueCombinations: boolean = false;
 
   constructor(
     private abyssalService: AbyssalService,
@@ -106,6 +108,11 @@ export class AbyssalTumbler {
   public updateCacheLayer(toogle: boolean) {
     this.useCacheLayer = toogle;
     this.abyssalService.useCacheLayer = this.useCacheLayer;
+  }
+
+  public updateUniqueCombinations(toogle: boolean) {
+    this.uniqueCombinations = toogle;
+    this.multiSort(this.sorts);
   }
 
   public updateCacheLayerUrl(url: string): void {
@@ -721,12 +728,13 @@ export class AbyssalTumbler {
     this.startWorker({
       action: 'sort',
       data: {
-        results: this.$results.getValue(),
-        sorts: Object.values(this.sorts)
+        results: this.results,
+        sorts: Object.values(this.sorts),
+        makeUnique: this.uniqueCombinations
       } as WorkerSortData
     },
     (event) => {
-      this.$results.next(event.data.data.results);
+      this.$tableEntries.next(event.data.data.results);
       this.resultLength = event.data.data.results.length;
       this.calcProgress = 0;
       this.isCalculating = false;
@@ -737,7 +745,8 @@ export class AbyssalTumbler {
   }
 
   public calculateCombinations() {
-    this.$results.next([]);
+    this.results = [];
+    this.$tableEntries.next([]);
     this.resultLength = 0;
     this.errorMessage = '';
 
@@ -786,7 +795,7 @@ export class AbyssalTumbler {
           this.cdr.detectChanges();
           return false;
         } else {
-          this.$results.next(event.data.data.results ?? []);
+          this.results = event.data.data.results;
           this.resultLength = event.data.data.results.length;
           this.isCalculating = false;
           this.calcProgress = 0;

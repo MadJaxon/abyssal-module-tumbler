@@ -40,7 +40,8 @@ addEventListener('message', (event: MessageEvent<WorkerCommand>) => {
 });
 
 function sort(data: WorkerSortData): WorkerSortData {
-  data.results = data.results.sort((a, b) => {
+  const dataSet: Result[] = data.makeUnique ? makeResultsUnique(data.results) : data.results;
+  data.results = dataSet.sort((a, b) => {
     for (const sorter of Object.values(data.sorts)) {
       let valA = a[sorter.key];
       let valB = b[sorter.key];
@@ -69,6 +70,31 @@ function sort(data: WorkerSortData): WorkerSortData {
 }
 
 
+function makeResultsUnique(results: Result[]) {
+  let usedItems: {type: string; index: number}[] = [];
+  return results.filter(result => {
+    let notUsed = true;
+    const resultItems: {type: string; index: number}[] = [];
+    result.modules.forEach(module => {
+      if (usedItems.some(
+        item =>
+          item.type === module.type &&
+          item.index === module.index
+      )) {
+        notUsed = false;
+      }
+      resultItems.push({
+        type: module.type,
+        index: module.index
+      });
+    });
+    if (notUsed) {
+      usedItems = usedItems.concat(resultItems);
+    }
+    return notUsed;
+  });
+}
+
 
 function findCombinations(data: WorkerCalcCombinationsData) {
   const totalModules = Object.keys(data.numModules).reduce((sum: number, type) => {
@@ -85,18 +111,9 @@ function findCombinations(data: WorkerCalcCombinationsData) {
   const results: Result[] = [];
 
   const combinations = generateLimitedCombinations(data.modules, data.numModules);
-  // console.log(combinations)
   combinations.forEach((comb, index) => {
     const totalCpu = comb.reduce((sum, m) => sum + m.cpu, 0);
     const totalPg = comb.reduce((sum, m) => sum + m.pg, 0);
-    // console.log([
-    //   totalCpu <= data.cpuBudget,
-    //   totalPg <= data.pgBudget,
-    //   totalCpu,
-    //   data.cpuBudget,
-    //   totalPg,
-    //   data.pgBudget,
-    // ])
     if (totalCpu <= data.cpuBudget && totalPg <= data.pgBudget) {
       const dpsIncrease = calculateDpsIncrease(comb.filter(m => m.type === 'dps') as DpsModule[]);
 
