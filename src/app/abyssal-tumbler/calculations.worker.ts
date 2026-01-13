@@ -41,6 +41,10 @@ addEventListener('message', (event: MessageEvent<WorkerCommand>) => {
 
 function sort(data: WorkerSortData): WorkerSortData {
   const dataSet: Result[] = data.makeUnique ? makeResultsUnique(data.results) : data.results;
+  if (Object.values(data.sorts).length === 0) {
+    data.results = dataSet;
+    return data;
+  }
   data.results = dataSet.sort((a, b) => {
     for (const sorter of Object.values(data.sorts)) {
       let valA = a[sorter.key];
