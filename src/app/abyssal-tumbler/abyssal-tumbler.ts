@@ -105,7 +105,7 @@ export class AbyssalTumbler {
   public removeModule(collection: Module[], index: number): boolean {
     const idx = collection.findIndex(m => m.index === index);
     if (idx >= 0) {
-      collection.splice(idx, 1);
+      collection.splice(idx, 1)[0].index = -1;
       return true;
     }
     return false;
