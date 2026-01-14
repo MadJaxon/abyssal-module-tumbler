@@ -2,10 +2,13 @@ export type AbyssalModuleType = 'dps'|'sb'|'neut'|'nos'|'battery'|'ab'|'mwd';
 
 export interface Module {
   type: AbyssalModuleType;
+  name: string;
   cpu: number;
   pg: number;
   index: number;
+  typeId?: number;
   itemId?: string;
+  estPrice?: number;
 }
 export interface ActiveModule extends Module {
   activationCost: number;
@@ -49,6 +52,7 @@ export interface MircowarpModule extends AfterburnerModule {
 export interface ResultModule {
   type: AbyssalModuleType;
   index: number;
+  typeId?: string;
   itemId?: string;
 }
 

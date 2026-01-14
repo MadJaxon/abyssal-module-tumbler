@@ -1,0 +1,60 @@
+<div id="container">
+  <div id="tabHeaders">
+    <div class="tabHeader" [class.active]="activeTab === 'mutamarket'" (click)="activeTab = 'mutamarket'">MutaMarket.com</div>
+    <div class="tabHeader" [class.active]="activeTab === 'esi'" (click)="activeTab = 'esi'">Eve-Contracts</div>
+  </div>
+  <div id="tabs">
+    <div class="tab" [class.active]="activeTab === 'mutamarket'">
+      <label for="mutaUrl">Paste MutaMarket.com url</label><br />
+      <input
+        type="url"
+        id="mutaUrl"
+        placeholder="https://mutamarket.com/modules/type/large-abyssal-graviton-smartbomb/attributes/power/1264.28/cpu/69.3768/duration/11028.6"
+        title="Past URL from mutamarket.com search page"
+        #mutaUrl
+        [disabled]="mutaLoading"
+        (keyup)="parseMutaUrl(mutaUrl)"
+      />
+      @if (modules['mutamarket'].length) {
+        <button
+          class="add"
+          title="Add all to selection"
+          (click)="addAllToSelection('mutamarket')"
+        >+All</button>
+        <button
+          class="remove"
+          title="Clear list"
+          (click)="modules['mutamarket'] = []"
+        >X</button>
+      } @else if (mutaLoading) {
+        Loading...
+      }
+      <br />
+      <ng-container [ngTemplateOutlet]="browser" [ngTemplateOutletContext]="{tab: 'mutamarket'}"></ng-container>
+    </div>
+    <div class="tab" [class.active]="activeTab === 'esi'">
+      Work in progress...
+      <ng-container [ngTemplateOutlet]="browser" [ngTemplateOutletContext]="{tab: 'esi'}"></ng-container>
+    </div>
+  </div>
+</div>
+
+<ng-template #browser let-tab="tab">
+  @for (module of modules[tab]; track module.itemId) {
+    <div class="browserEntry">
+      <app-type-icon [id]="module.typeId"></app-type-icon>
+      <div>
+        <a target="_blank" href="https://mutamarket.com/modules/{{module.itemId}}">{{module.name}}</a><br />
+        <small>
+          {{((module?.estPrice ?? 0) / 1000000) | number:"1.0-0"}}m&nbsp;ISK&nbsp;
+          <button
+            class="add"
+            [class.disabled]="module.index != -1"
+            [disabled]="module.index != -1"
+            title="Add to selection"
+            (click)="addToSelection(module)"
+          >+</button></small><br />
+      </div>
+    </div>
+  }
+</ng-template>

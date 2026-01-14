@@ -20,6 +20,8 @@ import {
 import {BehaviorSubject} from 'rxjs';
 import { CdkVirtualForOf, ScrollingModule as StandardScrollingModule} from '@angular/cdk/scrolling';
 import {CdkAutoSizeVirtualScroll, ScrollingModule } from '@angular/cdk-experimental/scrolling';
+import {ModuleBrowser} from './module-browser/module-browser';
+import {TypeIcon} from './type-icon/type-icon';
 
 
 @Component({
@@ -32,7 +34,9 @@ import {CdkAutoSizeVirtualScroll, ScrollingModule } from '@angular/cdk-experimen
     ScrollingModule,
     CdkVirtualForOf,
     AsyncPipe,
-    CdkAutoSizeVirtualScroll
+    CdkAutoSizeVirtualScroll,
+    ModuleBrowser,
+    TypeIcon
   ],
   templateUrl: './abyssal-tumbler.html',
   styleUrl: './abyssal-tumbler.scss',
@@ -105,6 +109,18 @@ export class AbyssalTumbler {
     return false;
   }
 
+  public addModulesFromBrowser(modules: Module[]) {
+    const usedIds = this.getUsedModuleIds();
+    modules.forEach(module => {
+      const collection = this.getCollectionForType(module.type);
+      if (collection) {
+        if (module.itemId && !usedIds.includes(module.itemId)) {
+          this.addNewModuleWithIndex(module);
+        }
+      }
+    });
+  }
+
   public updateCacheLayer(toogle: boolean) {
     this.useCacheLayer = toogle;
     this.abyssalService.useCacheLayer = this.useCacheLayer;
@@ -124,7 +140,7 @@ export class AbyssalTumbler {
     }
     if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
       this.cacheLayerUrl = url;
-      this.abyssalService.esiCacheUrl = url;
+      this.abyssalService.cacheUrl = url;
     }
   }
 
@@ -492,13 +508,9 @@ export class AbyssalTumbler {
     }
   }
 
-  public async parseChatMessage(input: HTMLTextAreaElement) {
-    const items = this.abyssalService.parseModulesFromChat(input.value);
-    if (!items || items.length === 0) {
-      return;
-    }
-    input.value = '';
-    const moduleIds = [
+  // private filterByUsedModules(modules: any[]) {
+  private getUsedModuleIds() {
+    return [
       ...this.dpsModules.map((m) => m.itemId ?? '0'),
       ...this.sbModules.map((m) => m.itemId ?? '0'),
       ...this.neutModules.map((m) => m.itemId ?? '0'),
@@ -507,162 +519,25 @@ export class AbyssalTumbler {
       ...this.abModules.map((m) => m.itemId ?? '0'),
       ...this.mwdModules.map((m) => m.itemId ?? '0')
     ];
-    // const moduleIds = Object.keys(this.modules).map(key => this.modules[key]).reduce(
-    //   (ids: string[], modules) => ids.concat(modules.map(m => m.itemId ?? '')),
-    //   []
-    // );
+    // return modules.filter((module: any) => !moduleIds.includes(module.itemId));
+  }
+
+  public async parseChatMessage(input: HTMLTextAreaElement) {
+    const items = this.abyssalService.parseModulesFromChat(input.value);
+    if (!items || items.length === 0) {
+      return;
+    }
+    input.value = '';
 
     this.errorMessage = '';
     try {
-      const updatedItems = await this.abyssalService.updateDogmaAttributes(items.filter(item => !moduleIds.includes(item.itemId)));
+      const updatedItems = await this.abyssalService.updateDogmaAttributes(items.filter(item => !this.getUsedModuleIds().includes(item.itemId)));
       if (this.debug) {
         this.debugData = updatedItems;
       }
-      updatedItems.forEach((item) => {
-        const cpu = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 50)?.value;
-        const pg = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 30)?.value;
-        const activationTime = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 73)?.value;
-        const activationCost = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 6)?.value;
-        const optimalRange = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 54)?.value;
-
-        //dmg modules:
-        const dmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 64)?.value;
-        const missileDmgMultiplier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 213)?.value;
-        const rofBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 204)?.value;
-
-        // nos:
-        const gjDrained = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 90)?.value;
-        // neuts:
-        const gjNeutralized = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 97)?.value;
-
-        //propmods:
-        const velocityBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 20)?.value;
-        const signatureModifier = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 554)?.value;
-
-        //batteries:
-        const capacitorBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 67)?.value;
-        const drainResistBonus = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 2267)?.value;
-
-        // smartbombs
-        const areaOfEffect = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 99)?.value;
-        const sbDamageEm = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 114)?.value;
-        const sbDamageTherm = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 118)?.value;
-        const sbDamageKinetic = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 117)?.value;
-        const sbDamageExpl = item.dogma?.dogma_attributes.find((attribute) => attribute.attribute_id === 116)?.value;
-        const sbDamage = (sbDamageEm ?? 0) + (sbDamageTherm ?? 0) + (sbDamageKinetic ?? 0) + (sbDamageExpl ?? 0);
-
-        if (!cpu || !pg) {
-          return;
-        }
-
-        if (
-          (dmgMultiplier || missileDmgMultiplier) &&
-          rofBonus
-        ) {
-          this.addNewModuleWithIndex(<DpsModule>{
-              type: 'dps',
-              index: -1,
-              dmgMulti: dmgMultiplier ? dmgMultiplier : (missileDmgMultiplier ? missileDmgMultiplier : 0),
-              rofBonus: (1 - rofBonus) * 100,
-              cpu: cpu,
-              pg: pg,
-              itemId: item.itemId
-            }, this.dpsModules);
-        } else if (
-          activationTime &&
-          gjDrained &&
-          optimalRange
-        ) {
-          this.addNewModuleWithIndex(<NosModule>{
-            type: 'nos',
-            index: -1,
-            activationCost: activationCost,
-            activationTime: activationTime,
-            drainAmount: gjDrained,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId,
-            range: optimalRange
-          }, this.nosModules);
-        } else if (
-          activationTime &&
-          activationCost &&
-          gjNeutralized &&
-          optimalRange
-        ) {
-          this.addNewModuleWithIndex(<NeutModule>{
-            type: 'neut',
-            index: -1,
-            activationCost: activationCost,
-            activationTime: activationTime,
-            neutAmount: gjNeutralized,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId,
-            range: optimalRange
-          }, this.neutModules);
-        } else if (
-          activationCost &&
-          activationTime &&
-          areaOfEffect &&
-          sbDamage
-        ) {
-          this.addNewModuleWithIndex(<SmartbombModule>{
-            type: 'sb',
-            index: -1,
-            activationCost: activationCost,
-            activationTime: activationTime,
-            range: areaOfEffect,
-            damage: sbDamage,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId
-          }, this.sbModules);
-        } else if (
-          activationTime &&
-          activationCost &&
-          velocityBonus &&
-          signatureModifier
-        ) {
-          this.addNewModuleWithIndex(<MircowarpModule>{
-            type: 'mwd',
-            index: -1,
-            activationTime: activationTime,
-            activationCost: activationCost,
-            velocityBonus: velocityBonus,
-            signatureRadiusModifier: signatureModifier,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId
-          }, this.mwdModules);
-        } else if (
-          activationTime &&
-          activationCost &&
-          velocityBonus
-        ) {
-          this.addNewModuleWithIndex(<AfterburnerModule>{
-            type: 'ab',
-            index: -1,
-            activationTime: activationTime,
-            activationCost: activationCost,
-            velocityBonus: velocityBonus,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId
-          }, this.abModules);
-        } else if (
-          capacitorBonus &&
-          drainResistBonus
-        ) {
-          this.addNewModuleWithIndex(<BatteryModule>{
-            type: 'battery',
-            index: -1,
-            capacitorBonus: capacitorBonus,
-            drainResistanceBonus: drainResistBonus,
-            cpu: cpu,
-            pg: pg,
-            itemId: item.itemId
-          }, this.batteryModules);
+      this.abyssalService.parseDogmaResponseIntoModules(updatedItems).forEach(module => {
+        if (module !== null) {
+          this.addNewModuleWithIndex(module);
         }
       });
     } catch (e: any) {
@@ -672,14 +547,39 @@ export class AbyssalTumbler {
     this.cdr.detectChanges();
   }
 
-  private addNewModuleWithIndex(module: Module, collection: Module[]) {
-    let index = 1;
-    const indizes = collection.map(m => m.index);
-    while (indizes.includes(index)) {
-      index++;
+  private getCollectionForType(type: string): Module[]|undefined {
+    switch (type) {
+      case 'sb':
+        return this.sbModules;
+      case 'mwd':
+        return this.mwdModules;
+      case 'battery':
+        return this.batteryModules;
+      case 'ab':
+        return this.abModules;
+      case 'dps':
+        return this.dpsModules;
+      case 'neut':
+        return this.neutModules;
+      case 'nos':
+        return this.nosModules;
+      default:
+        return undefined;
     }
-    module.index = index;
-    collection.push(module);
+  }
+
+  private addNewModuleWithIndex(module: Module) {
+    let collection: Module[]|undefined = this.getCollectionForType(module.type)
+    if (collection) {
+      let index = 1;
+      const indizes = collection.map(m => m.index);
+      while (indizes.includes(index)) {
+        index++;
+      }
+      module.index = index;
+      collection.push(module);
+      this.cdr.detectChanges();
+    }
   }
 
   public hasCapCost() {
@@ -696,24 +596,7 @@ export class AbyssalTumbler {
     if (this.numModules[type] === 0) {
       return false;
     }
-    switch (type) {
-      case 'dps':
-        return this.dpsModules.length > 0;
-      case 'neut':
-        return this.neutModules.length > 0;
-      case 'nos':
-        return this.nosModules.length > 0;
-      case 'sb':
-        return this.sbModules.length > 0;
-      case 'battery':
-        return this.batteryModules.length > 0;
-      case 'ab':
-        return this.abModules.length > 0;
-      case 'mwd':
-        return this.mwdModules.length > 0;
-      default:
-        return false;
-    }
+    return (this.getCollectionForType(type)?.length ?? 0) > 0;
   }
 
   public trackById(index: number, result: Result) {

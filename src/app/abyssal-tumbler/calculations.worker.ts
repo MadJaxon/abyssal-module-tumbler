@@ -171,7 +171,7 @@ function findCombinations(data: WorkerCalcCombinationsData) {
 
       results.push({
         id: index,
-        modules: comb.map(m => ({type: m.type, index: m.index, itemId: m.itemId})) as ResultModule[],
+        modules: comb.map(m => ({type: m.type, index: m.index, itemId: m.itemId, typeId: m.typeId})) as ResultModule[],
         totalCpu,
         totalPg,
         dpsIncrease,
@@ -199,7 +199,6 @@ function findCombinations(data: WorkerCalcCombinationsData) {
       });
     }
   });
-  debugger
 
   data.results = results;
 

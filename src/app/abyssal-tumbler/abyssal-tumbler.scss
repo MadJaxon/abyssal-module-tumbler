@@ -8,72 +8,13 @@
   padding: 20px;
 }
 
-h1, h2 {
-  color: #ffffff;
-}
-
-.inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-label {
-  font-weight: bold;
-  color: var(--text-secondary);
-}
-
-input, select, textarea {
-  padding: 10px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-primary);
-  margin: 5px;
-}
-
-a {
-  color: var(--text-primary);
-}
-a:hover {
-  color: var(--text-secondary);
-}
-
-input:focus, select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.3);
-}
-
-button {
-  padding: 10px 16px;
-  background-color: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-button:hover {
-  background-color: var(--accent-hover);
-}
-
-button.remove {
-  background-color: #da3633;
-}
-
-button.remove:hover {
-  background-color: #b02a26;
-}
-
-button.add {
-  background-color: #238636;
-}
-
-button.add:hover {
-  background-color: #1a7f37;
+#inputs {
+  #modules {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
 }
 
 button.calculate {
@@ -140,35 +81,40 @@ tr:nth-child(even) {
 #cacheLayerUrlInput {
   width: 88%;
 }
+#inputs {
+  display: flex;
+  #modules {
+    flex-grow: 1;
+    #moduleTabs {
+      #moduleTabsHeader {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1em;
+        .moduleTabHeader {
+          padding: 1em 0;
+          border: 1px solid var(--border);
+          border-top-left-radius: 1em;
+          border-top-right-radius: 1em;
+          flex: 1;
+          text-align: center;
+          cursor: pointer;
+        }
+        .moduleTabHeader.active {
+          background-color: var(--bg-card);
+        }
+        .moduleTabHeader:hover:not(.active) {
+          background-color: var(--bg-secondary);
+        }
+      }
 
-#moduleTabs {
-  #moduleTabsHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1em;
-    .moduleTabHeader {
-      padding: 1em 0;
-      border: 1px solid var(--border);
-      border-top-left-radius: 1em;
-      border-top-right-radius: 1em;
-      flex: 1;
-      text-align: center;
-      cursor: pointer;
+      div.moduleTab {
+        display: none;
+      }
+      div.moduleTab.active {
+        display: block;
+      }
     }
-    .moduleTabHeader.active {
-      background-color: var(--bg-card);
-    }
-    .moduleTabHeader:hover:not(.active) {
-      background-color: var(--bg-secondary);
-    }
-  }
-
-  div.moduleTab {
-    display: none;
-  }
-  div.moduleTab.active {
-    display: block;
   }
 }
 
