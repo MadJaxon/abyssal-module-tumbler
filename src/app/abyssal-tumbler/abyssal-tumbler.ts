@@ -74,13 +74,15 @@ export class AbyssalTumbler {
     'ab': 0,
     'mwd': 0,
   };
-  public dpsModules: DpsModule[] = [];
-  public sbModules: SmartbombModule[] = [];
-  public neutModules: NeutModule[] = [];
-  public nosModules: NosModule[] = [];
-  public batteryModules: BatteryModule[] = [];
-  public abModules: AfterburnerModule[] = [];
-  public mwdModules: MircowarpModule[] = [];
+  public modules: {[key: string]: Module[]} = {
+    dps: [],
+    sb: [],
+    neut: [],
+    nos: [],
+    battery: [],
+    ab: [],
+    mwd: [],
+  }
   public resultLength: number = 0;
   private results: Result[] = [];
   public $tableEntries: BehaviorSubject<Result[]> = new BehaviorSubject<Result[]>([]);
@@ -112,13 +114,38 @@ export class AbyssalTumbler {
   public addModulesFromBrowser(modules: Module[]) {
     const usedIds = this.getUsedModuleIds();
     modules.forEach(module => {
-      const collection = this.getCollectionForType(module.type);
-      if (collection) {
-        if (module.itemId && !usedIds.includes(module.itemId)) {
-          this.addNewModuleWithIndex(module);
-        }
+      if (module.itemId && !usedIds.includes(module.itemId)) {
+        this.addNewModuleWithIndex(module);
       }
     });
+  }
+
+  public getDpsModules(): DpsModule[] {
+    return this.modules['dps'] as DpsModule[];
+  }
+
+  public getSmartbombModules(): SmartbombModule[] {
+    return this.modules['sb'] as SmartbombModule[];
+  }
+
+  public getNeutModules(): NeutModule[] {
+    return this.modules['neut'] as NeutModule[];
+  }
+
+  public getNosModules(): NosModule[] {
+    return this.modules['nos'] as NosModule[];
+  }
+
+  public getBatteryModules(): BatteryModule[] {
+    return this.modules['battery'] as BatteryModule[];
+  }
+
+  public getAbModules(): AfterburnerModule[] {
+    return this.modules['ab'] as AfterburnerModule[];
+  }
+
+  public getMwdModules(): MircowarpModule[] {
+    return this.modules['mwd'] as MircowarpModule[];
   }
 
   public updateCacheLayer(toogle: boolean) {
@@ -311,7 +338,7 @@ export class AbyssalTumbler {
       dmgMulti: dmgMulti,
       rofBonus: rofBonus
     };
-    this.updateModuleCollection(module, this.dpsModules);
+    this.updateModuleCollection(module);
   }
 
   public updateNeutModule(
@@ -341,7 +368,7 @@ export class AbyssalTumbler {
       range: range,
       neutAmount: neutAmount
     };
-    this.updateModuleCollection(module, this.neutModules);
+    this.updateModuleCollection(module);
   }
 
   public updateNosModule(
@@ -372,7 +399,7 @@ export class AbyssalTumbler {
       range: range,
       drainAmount: drainAmount
     };
-    this.updateModuleCollection(module, this.nosModules);
+    this.updateModuleCollection(module);
   }
 
   public updateBatteryModule(
@@ -398,7 +425,7 @@ export class AbyssalTumbler {
       capacitorBonus: capacitorBonus,
       drainResistanceBonus: drainResistanceBonus
     };
-    this.updateModuleCollection(module, this.batteryModules);
+    this.updateModuleCollection(module);
   }
 
   public updateAbModule(
@@ -424,7 +451,7 @@ export class AbyssalTumbler {
       ),
       velocityBonus: velocityBonus
     };
-    this.updateModuleCollection(module, this.batteryModules);
+    this.updateModuleCollection(module);
   }
 
   public updateMwdModule(
@@ -455,7 +482,7 @@ export class AbyssalTumbler {
       velocityBonus: velocityBonus,
       signatureRadiusModifier: signatureRadiusModifier
     };
-    this.updateModuleCollection(module, this.batteryModules);
+    this.updateModuleCollection(module);
   }
 
   public updateSmartbombModule(
@@ -488,19 +515,19 @@ export class AbyssalTumbler {
       range: range,
       damage: damage
     };
-    this.updateModuleCollection(module, this.sbModules);
+    this.updateModuleCollection(module);
   }
 
-  private updateModuleCollection(module: Module, collection: Module[]): void {
+  private updateModuleCollection(module: Module): void {
     if (module.index === -1) {
       module.index = 1;
-      const indizes = collection.map(m => m.index);
+      const indizes = this.modules[module.type].map(m => m.index);
       while (indizes.includes(module.index)) {
         module.index++;
       }
-      collection.push(module);
+      this.modules[module.type].push(module);
     } else {
-      const oldModule = collection.find(m => m.index === module.index);
+      const oldModule = this.modules[module.type].find(m => m.index === module.index);
       if (oldModule) {
         // @ts-ignore
         Object.keys(module).forEach((key: string) => oldModule[key] = module[key]);
@@ -508,18 +535,14 @@ export class AbyssalTumbler {
     }
   }
 
-  // private filterByUsedModules(modules: any[]) {
   private getUsedModuleIds() {
-    return [
-      ...this.dpsModules.map((m) => m.itemId ?? '0'),
-      ...this.sbModules.map((m) => m.itemId ?? '0'),
-      ...this.neutModules.map((m) => m.itemId ?? '0'),
-      ...this.nosModules.map((m) => m.itemId ?? '0'),
-      ...this.batteryModules.map((m) => m.itemId ?? '0'),
-      ...this.abModules.map((m) => m.itemId ?? '0'),
-      ...this.mwdModules.map((m) => m.itemId ?? '0')
-    ];
-    // return modules.filter((module: any) => !moduleIds.includes(module.itemId));
+    return Object.values(this.modules).reduce(
+      (carry, current) => {
+        carry = carry.concat(current.map((m) => m.itemId ?? '0'));
+        return carry;
+      },
+      <string[]>[]
+    )
   }
 
   public async parseChatMessage(input: HTMLTextAreaElement) {
@@ -547,29 +570,8 @@ export class AbyssalTumbler {
     this.cdr.detectChanges();
   }
 
-  private getCollectionForType(type: string): Module[]|undefined {
-    switch (type) {
-      case 'sb':
-        return this.sbModules;
-      case 'mwd':
-        return this.mwdModules;
-      case 'battery':
-        return this.batteryModules;
-      case 'ab':
-        return this.abModules;
-      case 'dps':
-        return this.dpsModules;
-      case 'neut':
-        return this.neutModules;
-      case 'nos':
-        return this.nosModules;
-      default:
-        return undefined;
-    }
-  }
-
   private addNewModuleWithIndex(module: Module) {
-    let collection: Module[]|undefined = this.getCollectionForType(module.type)
+    let collection: Module[] = this.modules[module.type];
     if (collection) {
       let index = 1;
       const indizes = collection.map(m => m.index);
@@ -596,7 +598,7 @@ export class AbyssalTumbler {
     if (this.numModules[type] === 0) {
       return false;
     }
-    return (this.getCollectionForType(type)?.length ?? 0) > 0;
+    return this.modules[type].length > 0;
   }
 
   public trackById(index: number, result: Result) {
@@ -651,15 +653,7 @@ export class AbyssalTumbler {
     this.startWorker({
       action: 'findCombinations',
       data: <WorkerCalcCombinationsData>{
-        modules: {
-          dps: this.dpsModules,
-          sb: this.sbModules,
-          neut: this.neutModules,
-          nos: this.nosModules,
-          battery: this.batteryModules,
-          ab: this.abModules,
-          mwd: this.mwdModules
-        },
+        modules: this.modules,
         sorts: Object.values(this.sorts),
         numModules: this.numModules,
         cpuBudget: this.cpuBudget,
