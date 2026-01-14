@@ -40,12 +40,11 @@ addEventListener('message', (event: MessageEvent<WorkerCommand>) => {
 });
 
 function sort(data: WorkerSortData): WorkerSortData {
-  const dataSet: Result[] = data.makeUnique ? makeResultsUnique(data.results) : data.results;
   if (Object.values(data.sorts).length === 0) {
-    data.results = dataSet;
+    data.results = data.makeUnique ? makeResultsUnique(data.results) : data.results;
     return data;
   }
-  data.results = dataSet.sort((a, b) => {
+  const sorted = data.results.sort((a, b) => {
     for (const sorter of Object.values(data.sorts)) {
       let valA = a[sorter.key];
       let valB = b[sorter.key];
@@ -70,6 +69,7 @@ function sort(data: WorkerSortData): WorkerSortData {
     }
     return 0;
   });
+  data.results = data.makeUnique ? makeResultsUnique(sorted) : sorted;
   return data;
 }
 
