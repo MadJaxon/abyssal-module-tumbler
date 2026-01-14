@@ -248,7 +248,13 @@ function generateLimitedCombinations(data: Record<string, Module[]>, limits: Rec
     const limit = limits[key] ?? 0; // Default to 0 if no limit specified
     const subsets: any[][] = [];
     for (let r = 0; r <= Math.min(limit, arr.length); r++) {
-      subsets.push(...combinations(arr, r));
+      // chunking as a workaround for javascripts maximum function arguments limitation
+      const chunkSize = 100;
+      const combinationsArray = combinations(arr, r);
+      for (let i = 0; i < combinationsArray.length; i += chunkSize) {
+        const chunk = combinationsArray.slice(i, i + chunkSize);
+        subsets.push(...chunk);
+      }
     }
     allSubsets[key] = subsets;
   }
