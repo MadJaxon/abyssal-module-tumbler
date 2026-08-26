@@ -1,0 +1,7 @@
+old_project/
+node_modules/
+dist/
+.DS_Store
+*.local
+.vite/
+coverage/
