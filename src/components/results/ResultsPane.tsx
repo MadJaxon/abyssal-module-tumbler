@@ -1,9 +1,8 @@
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { MODULE_LABELS, MODULE_TYPES, type Result } from '../../types';
 import { useTumbler } from '../../store/useTumbler';
 import { ResultRow } from './ResultRow';
-import { ResultsTable } from './ResultsTable';
 
 const SORT_KEYS: { key: keyof Result; label: string; when: (num: { [k: string]: number }) => boolean }[] = [
   { key: 'dpsIncrease', label: 'DPS %', when: (n) => (n.dps ?? 0) > 0 },
@@ -22,10 +21,18 @@ const SORT_KEYS: { key: keyof Result; label: string; when: (num: { [k: string]: 
 export function ResultsPane() {
   const displayed = useTumbler((s) => s.displayedResults);
   const denseTable = useTumbler((s) => s.denseTable);
+  const setDenseTable = useTumbler((s) => s.setDenseTable);
+  const uniqueCombinations = useTumbler((s) => s.uniqueCombinations);
+  const setUnique = useTumbler((s) => s.setUnique);
+  const balanceSets = useTumbler((s) => s.balanceSets);
+  const setBalanceSets = useTumbler((s) => s.setBalanceSets);
+  const balanceTarget = useTumbler((s) => s.balanceTarget);
+  const setBalanceTarget = useTumbler((s) => s.setBalanceTarget);
   const numModules = useTumbler((s) => s.numModules);
   const sorts = useTumbler((s) => s.sorts);
   const toggleSort = useTumbler((s) => s.toggleSort);
   const balanceNoteText = useTumbler((s) => s.balanceNote);
+  const expandedResultId = useTumbler((s) => s.expandedResultId);
   const isCalculating = useTumbler((s) => s.isCalculating);
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -34,9 +41,14 @@ export function ResultsPane() {
   const virtualizer = useVirtualizer({
     count: displayed.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 56,
+    estimateSize: () => (denseTable ? 32 : 64),
     overscan: 12,
   });
+
+  useEffect(() => {
+    // virtualizer is a stable store; listing it retriggers measure forever.
+    virtualizer.measure();
+  }, [expandedResultId, denseTable, displayed.length]);
 
   const slotHint = MODULE_TYPES.filter((t) => (numModules[t] ?? 0) > 0)
     .map((t) => `${numModules[t]}× ${MODULE_LABELS[t]}`)
@@ -74,6 +86,50 @@ export function ResultsPane() {
           <p className="w-full text-xs text-amber">{balanceNoteText}</p>
         )}
       </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 border-b border-line px-4 py-2 text-sm text-muted">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={uniqueCombinations}
+            onChange={(e) => setUnique(e.target.checked)}
+          />
+          Unique modules across results
+        </label>
+        {uniqueCombinations && (
+          <label
+            className="flex cursor-pointer items-center gap-2"
+            title="Pick this many disjoint fits and level the first sort column across them. Descending raises the weakest fit; ascending lowers the strongest. The ordinary unique list still gives the best modules to the first fit."
+          >
+            <input
+              type="checkbox"
+              checked={balanceSets}
+              onChange={(e) => setBalanceSets(e.target.checked)}
+            />
+            Balance sets
+          </label>
+        )}
+        {uniqueCombinations && balanceSets && (
+          <label className="flex items-center gap-2">
+            Target
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={balanceTarget}
+              className="compact-num"
+              onChange={(e) => setBalanceTarget(parseInt(e.target.value, 10))}
+            />
+          </label>
+        )}
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="checkbox"
+            checked={denseTable}
+            onChange={(e) => setDenseTable(e.target.checked)}
+          />
+          Dense table
+        </label>
+      </div>
 
       {displayed.length === 0 && !isCalculating && (
         <div className="m-4 border border-dashed border-line bg-panel/30 p-6 text-sm text-muted">
@@ -82,10 +138,8 @@ export function ResultsPane() {
         </div>
       )}
 
-      {denseTable && displayed.length > 0 && <ResultsTable rows={displayed} best={best} />}
-
-      {!denseTable && displayed.length > 0 && (
-        <div ref={parentRef} className="min-h-0 flex-1 overflow-auto px-3 py-2">
+      {displayed.length > 0 && (
+        <div ref={parentRef} className={`min-h-0 flex-1 overflow-auto ${denseTable ? 'px-2 py-1' : 'px-3 py-2'}`}>
           <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
             {virtualizer.getVirtualItems().map((item) => {
               const result = displayed[item.index];
@@ -100,10 +154,10 @@ export function ResultsPane() {
                     left: 0,
                     width: '100%',
                     transform: `translateY(${item.start}px)`,
-                    paddingBottom: 8,
+                    paddingBottom: denseTable ? 2 : 8,
                   }}
                 >
-                  <ResultRow result={result} best={best} />
+                  <ResultRow result={result} best={best} dense={denseTable} />
                 </div>
               );
             })}

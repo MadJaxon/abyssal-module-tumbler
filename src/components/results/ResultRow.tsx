@@ -8,9 +8,11 @@ import { useTumbler } from '../../store/useTumbler';
 export function ResultRow({
   result,
   best,
+  dense = false,
 }: {
   result: Result;
   best: Partial<Record<keyof Result, number>>;
+  dense?: boolean;
 }) {
   const modules = useTumbler((s) => s.modules);
   const numModules = useTumbler((s) => s.numModules);
@@ -47,10 +49,12 @@ export function ResultRow({
   }
 
   return (
-    <article className={`border border-line ${expanded ? 'bg-panel' : 'bg-hull/40'}`}>
+    <article className={`border border-line ${expanded ? 'bg-panel' : 'bg-hull/40'} ${dense ? 'text-[12px]' : ''}`}>
       <button
         type="button"
-        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-raised/60"
+        className={`flex w-full items-center text-left hover:bg-raised/60 ${
+          dense ? 'gap-2 px-2 py-1' : 'gap-3 px-3 py-2'
+        }`}
         onClick={() => setExpanded(expanded ? null : result.id)}
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -61,28 +65,31 @@ export function ResultRow({
                 typeId={full?.typeId ?? ref.typeId}
                 type={ref.type}
                 title={full ? moduleTitle(full) : `${MODULE_LABELS[ref.type]} #${ref.index}`}
-                size={28}
+                size={dense ? 18 : 28}
               />
             ))}
           </div>
-          <span className="hidden truncate font-mono text-[11px] text-muted md:inline">
+          <span className={`truncate font-mono text-muted ${dense ? 'text-[10px]' : 'hidden text-[11px] md:inline'}`}>
             {resolved
               .map(({ ref }) => `${MODULE_LABELS[ref.type]} #${ref.index}`)
               .join(' · ')}
           </span>
         </div>
         <Metric
+          dense={dense}
           label="CPU left"
           value={`${fmtNum(leftoverCpu, 1)} tf`}
           glow={best.totalCpu === result.totalCpu}
         />
         <Metric
+          dense={dense}
           label="PG left"
           value={`${fmtNum(leftoverPg, 1)} MW`}
           glow={best.totalPg === result.totalPg}
         />
         {numModules.dps > 0 && (
           <Metric
+            dense={dense}
             label="DPS"
             value={`+${fmtNum(result.dpsIncrease, 2)}%`}
             glow={best.dpsIncrease === result.dpsIncrease}
@@ -90,6 +97,7 @@ export function ResultRow({
         )}
         {numModules.sb > 0 && (
           <Metric
+            dense={dense}
             label="SB DPS"
             value={fmtNum(result.smartbombDps, 1)}
             glow={best.smartbombDps === result.smartbombDps}
@@ -97,6 +105,7 @@ export function ResultRow({
         )}
         {numModules.neut > 0 && (
           <Metric
+            dense={dense}
             label="Neut/s"
             value={fmtNum(result.neutAmount, 1)}
             glow={best.neutAmount === result.neutAmount}
@@ -104,6 +113,7 @@ export function ResultRow({
         )}
         {numModules.nos > 0 && (
           <Metric
+            dense={dense}
             label="NOS/s"
             value={fmtNum(result.nosAmount, 1)}
             glow={best.nosAmount === result.nosAmount}
@@ -111,6 +121,7 @@ export function ResultRow({
         )}
         {numModules.battery > 0 && (
           <Metric
+            dense={dense}
             label="Cap"
             value={fmtNum(result.capBonus, 0)}
             glow={best.capBonus === result.capBonus}
@@ -118,6 +129,7 @@ export function ResultRow({
         )}
         {(numModules.sb > 0 || numModules.neut > 0 || numModules.ab > 0 || numModules.mwd > 0) && (
           <Metric
+            dense={dense}
             label="GJ/s"
             value={fmtNum(result.totalGj, 2)}
             glow={best.totalGj === result.totalGj}
@@ -125,7 +137,7 @@ export function ResultRow({
         )}
       </button>
       {expanded && (
-        <div className="border-t border-line px-3 py-3">
+        <div className={`border-t border-line ${dense ? 'px-2 py-2' : 'px-3 py-3'}`}>
           <div className="mb-2 flex justify-end">
             <button
               type="button"
@@ -138,13 +150,13 @@ export function ResultRow({
               {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy combination'}
             </button>
           </div>
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className={`grid sm:grid-cols-2 ${dense ? 'gap-1' : 'gap-2'}`}>
             {resolved.map(({ ref, full }) => {
               const href = mutamarketUrl(ref.itemId ?? full?.itemId);
               const title = full ? moduleTitle(full) : `${MODULE_LABELS[ref.type]} #${ref.index}`;
               return (
-                <li key={`${ref.type}-${ref.index}`} className="flex items-center gap-2 text-sm">
-                  <TypeIcon typeId={full?.typeId ?? ref.typeId} type={ref.type} title={title} size={24} />
+                <li key={`${ref.type}-${ref.index}`} className={`flex items-center gap-2 ${dense ? 'text-xs' : 'text-sm'}`}>
+                  <TypeIcon typeId={full?.typeId ?? ref.typeId} type={ref.type} title={title} size={dense ? 18 : 24} />
                   {href ? (
                     <a href={href} target="_blank" rel="noreferrer" className="hover:text-amber">
                       {title}
@@ -160,7 +172,7 @@ export function ResultRow({
               );
             })}
           </ul>
-          <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-xs text-muted sm:grid-cols-4">
+          <dl className={`grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-muted sm:grid-cols-4 ${dense ? 'mt-2 text-[11px]' : 'mt-3 text-xs'}`}>
             <Stat label="Total CPU" value={`${fmtNum(result.totalCpu, 2)} tf`} />
             <Stat label="Total PG" value={`${fmtNum(result.totalPg, 2)} MW`} />
             {numModules.dps > 0 && <Stat label="DPS increase" value={`${fmtNum(result.dpsIncrease, 2)}%`} />}
@@ -218,7 +230,25 @@ export function ResultRow({
   );
 }
 
-function Metric({ label, value, glow }: { label: string; value: string; glow?: boolean }) {
+function Metric({
+  label,
+  value,
+  glow,
+  dense,
+}: {
+  label: string;
+  value: string;
+  glow?: boolean;
+  dense?: boolean;
+}) {
+  if (dense) {
+    return (
+      <div className={`hidden shrink-0 font-mono text-[11px] sm:block ${glow ? 'text-amber' : 'text-ink'}`}>
+        <span className="mr-1 uppercase tracking-wide text-muted">{label}</span>
+        {value}
+      </div>
+    );
+  }
   return (
     <div className={`hidden min-w-20 text-right sm:block ${glow ? 'text-amber' : 'text-ink'}`}>
       <div className="text-[10px] uppercase tracking-wide text-muted">{label}</div>
