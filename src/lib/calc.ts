@@ -4,6 +4,7 @@
 // walks the exact-count product directly so large inventories are not built
 // up front. onProgress replaces in-worker postMessage.
 
+import { balanceNote, balanceResults } from './balance';
 import {
   AfterburnerModule,
   BatteryModule,
@@ -15,41 +16,55 @@ import {
   Result,
   ResultModule,
   SmartbombModule,
+  TableSorter,
   WorkerCalcCombinationsData,
   WorkerSortData,
 } from '../types';
 
+function compareResults(a: Result, b: Result, sorts: TableSorter[]): number {
+  for (const sorter of sorts) {
+    const valA = a[sorter.key];
+    const valB = b[sorter.key];
+
+    if (valA == null && valB == null) continue;
+    if (valA == null) return sorter.direction === 'asc' ? -1 : 1;
+    if (valB == null) return sorter.direction === 'asc' ? 1 : -1;
+
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      if (valA < valB) return sorter.direction === 'asc' ? -1 : 1;
+      if (valA > valB) return sorter.direction === 'asc' ? 1 : -1;
+      continue;
+    }
+
+    const strA = String(valA).toLowerCase();
+    const strB = String(valB).toLowerCase();
+    if (strA < strB) return sorter.direction === 'asc' ? -1 : 1;
+    if (strA > strB) return sorter.direction === 'asc' ? 1 : -1;
+  }
+  return 0;
+}
+
 export function sort(data: WorkerSortData): WorkerSortData {
-  if (Object.values(data.sorts).length === 0) {
-    data.results = data.makeUnique ? makeResultsUnique(data.results) : data.results;
+  if (data.sorts.length > 0) {
+    data.results.sort((a, b) => compareResults(a, b, data.sorts));
+  }
+  if (data.balanceSets && data.makeUnique) {
+    const target = Math.max(1, Math.min(99, Math.floor(data.balanceTarget ?? 3)));
+    const primary = data.sorts[0];
+    const sample = data.results[0]?.[primary?.key];
+    if (!primary || (data.results.length > 0 && typeof sample !== 'number')) {
+      data.results = makeResultsUnique(data.results);
+      data.balanceNote = 'Sort by a column to balance sets.';
+      return data;
+    }
+    const balanced = balanceResults(data.results, primary.key, primary.direction, target);
+    balanced.results.sort((a, b) => compareResults(a, b, data.sorts));
+    data.results = balanced.results;
+    data.balanceNote = balanceNote(balanced.achieved, target, data.sorts);
     return data;
   }
-  const sorted = data.results.sort((a, b) => {
-    for (const sorter of Object.values(data.sorts)) {
-      let valA = a[sorter.key];
-      let valB = b[sorter.key];
-
-      // Handle null/undefined
-      if (valA == null && valB == null) continue;
-      if (valA == null) return sorter.direction === 'asc' ? -1 : 1;
-      if (valB == null) return sorter.direction === 'asc' ? 1 : -1;
-
-      // Numeric comparison
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        if (valA < valB) return sorter.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sorter.direction === 'asc' ? 1 : -1;
-        continue;
-      }
-
-      // Fallback to string comparison for other types
-      const strA = String(valA).toLowerCase();
-      const strB = String(valB).toLowerCase();
-      if (strA < strB) return sorter.direction === 'asc' ? -1 : 1;
-      if (strA > strB) return sorter.direction === 'asc' ? 1 : -1;
-    }
-    return 0;
-  });
-  data.results = data.makeUnique ? makeResultsUnique(sorted) : sorted;
+  data.balanceNote = undefined;
+  if (data.makeUnique) data.results = makeResultsUnique(data.results);
   return data;
 }
 

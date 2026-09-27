@@ -42,6 +42,8 @@ function persistSlice(state: PersistedSlice): void {
     cpuBudget: state.cpuBudget,
     pgBudget: state.pgBudget,
     uniqueCombinations: state.uniqueCombinations,
+    balanceSets: state.balanceSets,
+    balanceTarget: state.balanceTarget,
     sorts: state.sorts,
     denseTable: state.denseTable,
     parallelCalc: state.parallelCalc,
@@ -60,6 +62,7 @@ type TumblerState = PersistedSlice & {
   calcProgress: number;
   calcCores: number;
   errorMessage: string;
+  balanceNote: string;
   importStatus: string;
   expandedResultId: number | null;
   activeType: AbyssalModuleType | 'all' | 'add';
@@ -71,6 +74,8 @@ type TumblerState = PersistedSlice & {
   setCpuBudget: (value: number) => void;
   setPgBudget: (value: number) => void;
   setUnique: (value: boolean) => void;
+  setBalanceSets: (value: boolean) => void;
+  setBalanceTarget: (value: number) => void;
   setParallelCalc: (value: boolean) => void;
   toggleSort: (key: TableSorter['key']) => void;
   setDenseTable: (value: boolean) => void;
@@ -92,6 +97,7 @@ export const useTumbler = create<TumblerState>((set, get) => ({
   calcProgress: 0,
   calcCores: 0,
   errorMessage: '',
+  balanceNote: '',
   importStatus: '',
   expandedResultId: null,
   activeType: 'all',
@@ -172,6 +178,25 @@ export const useTumbler = create<TumblerState>((set, get) => ({
     if (results.length) {
       runSort(get, set, results, sorts);
     }
+  },
+
+  setBalanceSets: (balanceSets) => {
+    set((state) => {
+      persistSlice({ ...state, balanceSets });
+      return { balanceSets };
+    });
+    const { results, sorts } = get();
+    if (results.length) runSort(get, set, results, sorts);
+  },
+
+  setBalanceTarget: (value) => {
+    const balanceTarget = Math.max(1, Math.min(99, Math.floor(value) || 1));
+    set((state) => {
+      persistSlice({ ...state, balanceTarget });
+      return { balanceTarget };
+    });
+    const { results, sorts, balanceSets, uniqueCombinations } = get();
+    if (results.length && balanceSets && uniqueCombinations) runSort(get, set, results, sorts);
   },
 
   setParallelCalc: (parallelCalc) => {
@@ -347,6 +372,7 @@ function startCalculation(
     results: [],
     displayedResults: [],
     errorMessage: '',
+    balanceNote: '',
     expandedResultId: null,
   });
 
@@ -415,6 +441,8 @@ function runSort(
         results,
         sorts,
         makeUnique: get().uniqueCombinations,
+        balanceSets: get().balanceSets,
+        balanceTarget: get().balanceTarget,
       } satisfies WorkerSortData,
     },
     (event) => {
@@ -426,6 +454,7 @@ function runSort(
       const payload = event.data as WorkerSortData;
       set({
         displayedResults: payload.results,
+        balanceNote: payload.balanceNote ?? '',
         isCalculating: false,
         calcProgress: 0,
         calcCores: 0,

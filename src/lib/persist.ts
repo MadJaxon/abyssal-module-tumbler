@@ -13,6 +13,9 @@ export type PersistedSlice = {
   cpuBudget: number;
   pgBudget: number;
   uniqueCombinations: boolean;
+  /** When unique is on, level the first sort column across `balanceTarget` fits. */
+  balanceSets: boolean;
+  balanceTarget: number;
   sorts: TableSorter[];
   denseTable: boolean;
   /** Split large tumbles across workers. Small searches still use one. */
@@ -26,6 +29,8 @@ export function defaultPersisted(): PersistedSlice {
     cpuBudget: 10000,
     pgBudget: 10000,
     uniqueCombinations: false,
+    balanceSets: false,
+    balanceTarget: 3,
     sorts: [],
     denseTable: false,
     parallelCalc: true,

@@ -112,6 +112,10 @@ export interface WorkerSortData {
   results: Result[];
   sorts: TableSorter[];
   makeUnique: boolean;
+  /** Level the first sort column across this many disjoint fits. Requires makeUnique. */
+  balanceSets?: boolean;
+  balanceTarget?: number;
+  balanceNote?: string;
 }
 
 export interface WorkerCalcCombinationsData {

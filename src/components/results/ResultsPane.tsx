@@ -25,6 +25,7 @@ export function ResultsPane() {
   const numModules = useTumbler((s) => s.numModules);
   const sorts = useTumbler((s) => s.sorts);
   const toggleSort = useTumbler((s) => s.toggleSort);
+  const balanceNoteText = useTumbler((s) => s.balanceNote);
   const isCalculating = useTumbler((s) => s.isCalculating);
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +70,9 @@ export function ResultsPane() {
             );
           })}
         </div>
+        {balanceNoteText && (
+          <p className="w-full text-xs text-amber">{balanceNoteText}</p>
+        )}
       </div>
 
       {displayed.length === 0 && !isCalculating && (

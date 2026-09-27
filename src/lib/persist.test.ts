@@ -34,6 +34,8 @@ describe('persist', () => {
     localStorage.setItem(PERSIST_KEY, JSON.stringify({ cpuBudget: 12 }));
     const loaded = loadPersisted();
     expect(loaded?.parallelCalc).toBe(true);
+    expect(loaded?.balanceSets).toBe(false);
+    expect(loaded?.balanceTarget).toBe(3);
     expect(loaded?.cpuBudget).toBe(12);
   });
 });
