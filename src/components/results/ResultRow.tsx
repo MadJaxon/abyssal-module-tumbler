@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { MODULE_LABELS, type Result } from '../../types';
+import { writeClipboard } from '../../lib/clipboard';
 import { fmtNum, moduleTitle, mutamarketUrl } from '../../lib/format';
 import { TypeIcon } from '../TypeIcon';
 import { useTumbler } from '../../store/useTumbler';
@@ -18,6 +20,7 @@ export function ResultRow({
   const setExpanded = useTumbler((s) => s.setExpanded);
   const leftoverCpu = cpuBudget - result.totalCpu;
   const leftoverPg = pgBudget - result.totalPg;
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   const resolved = result.modules.map((ref) => {
     const full = modules[ref.type]?.find((m) => m.index === ref.index);
@@ -34,7 +37,13 @@ export function ResultRow({
       `CPU ${fmtNum(result.totalCpu, 1)} tf (${fmtNum(leftoverCpu, 1)} left) · PG ${fmtNum(result.totalPg, 1)} MW (${fmtNum(leftoverPg, 1)} left)`,
     );
     if (numModules.dps > 0) lines.push(`DPS +${fmtNum(result.dpsIncrease, 2)}%`);
-    await navigator.clipboard.writeText(lines.join('\n'));
+    try {
+      await writeClipboard(lines.join('\n'));
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+    window.setTimeout(() => setCopyState('idle'), 1600);
   }
 
   return (
@@ -121,9 +130,12 @@ export function ResultRow({
             <button
               type="button"
               className="rounded-sm border border-line px-2 py-1 text-xs text-muted hover:text-ink"
-              onClick={() => void copy()}
+              onClick={(event) => {
+                event.stopPropagation();
+                void copy();
+              }}
             >
-              Copy combination
+              {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy combination'}
             </button>
           </div>
           <ul className="grid gap-2 sm:grid-cols-2">

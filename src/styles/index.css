@@ -72,6 +72,13 @@ select {
   padding: 0.45rem 0.6rem;
 }
 
+input.compact-num {
+  width: 3.25rem;
+  padding: 0.15rem 0.3rem;
+  text-align: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
 input:focus,
 textarea:focus,
 select:focus {
