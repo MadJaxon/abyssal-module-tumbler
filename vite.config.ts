@@ -26,6 +26,9 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/esi/, ''),
       },
     },
+    allowedHosts: [
+        "dumpling.lafu.local"
+    ]
   },
   test: {
     environment: 'jsdom',
