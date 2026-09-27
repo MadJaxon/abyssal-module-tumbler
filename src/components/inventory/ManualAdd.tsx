@@ -55,7 +55,6 @@ const FIELDS: Record<AbyssalModuleType, { key: string; label: string }[]> = {
 
 export function ManualAdd() {
   const addModules = useTumbler((s) => s.addModules);
-  const [open, setOpen] = useState(false);
   const [type, setType] = useState<AbyssalModuleType>('dps');
   const [values, setValues] = useState<Record<string, string>>({});
   const [name, setName] = useState('');
@@ -79,25 +78,10 @@ export function ManualAdd() {
     setName('');
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        className="w-full rounded-sm border border-dashed border-line py-2 text-xs text-muted hover:border-line-bright hover:text-ink"
-        onClick={() => setOpen(true)}
-      >
-        Add a module manually
-      </button>
-    );
-  }
-
   return (
     <form onSubmit={onSubmit} className="border border-line bg-panel p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted">Manual add</span>
-        <button type="button" className="text-xs text-muted hover:text-ink" onClick={() => setOpen(false)}>
-          Close
-        </button>
+      <div className="mb-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted">Add a module</span>
       </div>
       <div className="mb-2 grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-0.5 text-[11px] text-muted">
@@ -141,7 +125,7 @@ export function ManualAdd() {
         type="submit"
         className="mt-3 w-full rounded-sm bg-teal/80 px-3 py-1.5 text-sm font-medium text-void hover:bg-teal"
       >
-        Add {MODULE_LABELS[type]}
+        Add Module
       </button>
     </form>
   );

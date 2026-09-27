@@ -62,7 +62,7 @@ type TumblerState = PersistedSlice & {
   errorMessage: string;
   importStatus: string;
   expandedResultId: number | null;
-  activeType: AbyssalModuleType | 'all';
+  activeType: AbyssalModuleType | 'all' | 'add';
   pendingEstimate: number | null;
   addModules: (incoming: Module[]) => void;
   removeModule: (type: AbyssalModuleType, index: number) => void;
@@ -74,7 +74,7 @@ type TumblerState = PersistedSlice & {
   setParallelCalc: (value: boolean) => void;
   toggleSort: (key: TableSorter['key']) => void;
   setDenseTable: (value: boolean) => void;
-  setActiveType: (type: AbyssalModuleType | 'all') => void;
+  setActiveType: (type: AbyssalModuleType | 'all' | 'add') => void;
   setExpanded: (id: number | null) => void;
   importFromChat: (text: string) => Promise<number>;
   importFromMuta: (url: string) => Promise<number>;

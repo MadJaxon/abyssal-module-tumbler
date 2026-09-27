@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { MODULE_LABELS, MODULE_TYPES } from '../../types';
 import { useTumbler } from '../../store/useTumbler';
 import { PasteZone } from '../PasteZone';
@@ -16,8 +17,16 @@ export function InventoryPane() {
   const errorMessage = useTumbler((s) => s.errorMessage);
 
   const total = MODULE_TYPES.reduce((sum, type) => sum + modules[type].length, 0);
-  const visibleTypes = activeType === 'all' ? MODULE_TYPES : [activeType];
-  const visible = visibleTypes.flatMap((type) => modules[type]);
+  const populated = MODULE_TYPES.filter((type) => modules[type].length > 0);
+  const showingAdd = activeType === 'add';
+  const visibleTypes = activeType === 'all' || showingAdd ? MODULE_TYPES : [activeType];
+  const visible = showingAdd ? [] : visibleTypes.flatMap((type) => modules[type]);
+
+  useEffect(() => {
+    if (activeType !== 'all' && activeType !== 'add' && modules[activeType].length === 0) {
+      setActiveType('all');
+    }
+  }, [activeType, modules, setActiveType]);
 
   return (
     <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-line bg-hull/60 lg:w-[26.5rem] lg:border-r lg:border-b-0">
@@ -41,7 +50,7 @@ export function InventoryPane() {
           active={activeType === 'all'}
           onClick={() => setActiveType('all')}
         />
-        {MODULE_TYPES.map((type) => (
+        {populated.map((type) => (
           <TypeChip
             key={type}
             label={`${MODULE_LABELS[type]} (${modules[type].length})`}
@@ -49,10 +58,12 @@ export function InventoryPane() {
             onClick={() => setActiveType(type)}
           />
         ))}
+        <TypeChip label="Add module" active={showingAdd} onClick={() => setActiveType('add')} />
       </div>
 
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-        {total === 0 && (
+        {showingAdd && <ManualAdd />}
+        {!showingAdd && total === 0 && (
           <div className="border border-dashed border-line bg-panel/40 p-4 text-sm leading-relaxed text-muted">
             <p>
               Paste mutated modules from EVE chat. The client copies them as{' '}
@@ -62,10 +73,10 @@ export function InventoryPane() {
             <p className="mt-3 font-mono text-[11px] text-muted/80">{SAMPLE}</p>
           </div>
         )}
-        {visible.map((module) => (
-          <ModuleCard key={`${module.type}-${module.index}`} module={module} />
-        ))}
-        <ManualAdd />
+        {!showingAdd &&
+          visible.map((module) => (
+            <ModuleCard key={`${module.type}-${module.index}`} module={module} />
+          ))}
       </div>
     </aside>
   );
