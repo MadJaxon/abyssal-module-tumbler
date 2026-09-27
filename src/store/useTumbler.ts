@@ -86,6 +86,7 @@ type TumblerState = PersistedSlice & {
   calculate: (force?: boolean) => void;
   confirmPending: () => void;
   cancelPending: () => void;
+  cancelCalculation: () => void;
   clearInventory: () => void;
 };
 
@@ -319,6 +320,13 @@ export const useTumbler = create<TumblerState>((set, get) => ({
   },
 
   cancelPending: () => set({ pendingEstimate: null }),
+
+  cancelCalculation: () => {
+    runToken += 1;
+    handle?.terminate();
+    handle = null;
+    set({ isCalculating: false, calcProgress: 0, calcCores: 0 });
+  },
 
   clearInventory: () => {
     const modules = emptyInventory();

@@ -13,6 +13,7 @@ export function FitBar() {
   const numModules = useTumbler((s) => s.numModules);
   const setNumModules = useTumbler((s) => s.setNumModules);
   const calculate = useTumbler((s) => s.calculate);
+  const cancelCalculation = useTumbler((s) => s.cancelCalculation);
   const isCalculating = useTumbler((s) => s.isCalculating);
   const calcProgress = useTumbler((s) => s.calcProgress);
   const calcCores = useTumbler((s) => s.calcCores);
@@ -66,20 +67,31 @@ export function FitBar() {
           </div>
         )}
         <div className="ml-auto flex flex-col items-end gap-1">
-          <button
-            type="button"
-            disabled={isCalculating}
-            className="rounded-sm bg-ember px-5 py-2 font-display text-lg tracking-[0.12em] text-ink hover:bg-ember-dim disabled:opacity-60"
-            onClick={() => calculate(false)}
-          >
-            {isCalculating
-              ? calcProgress === -1
-                ? 'SORTING…'
-                : `TUMBLING… ${calcProgress.toLocaleString()}${
-                    calcCores > 1 ? ` · ${calcCores} cores` : ''
-                  }`
-              : 'CALCULATE'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isCalculating}
+              className="rounded-sm bg-ember px-5 py-2 font-display text-lg tracking-[0.12em] text-ink hover:bg-ember-dim disabled:opacity-60"
+              onClick={() => calculate(false)}
+            >
+              {isCalculating
+                ? calcProgress === -1
+                  ? 'SORTING…'
+                  : `TUMBLING… ${calcProgress.toLocaleString()}${
+                      calcCores > 1 ? ` · ${calcCores} cores` : ''
+                    }`
+                : 'CALCULATE'}
+            </button>
+            {isCalculating && (
+              <button
+                type="button"
+                className="rounded-sm border border-line px-2 py-1 text-xs text-muted hover:text-ink"
+                onClick={cancelCalculation}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
           <span className="text-[11px] text-muted">
             ~{Number.isFinite(estimate) ? estimate.toLocaleString() : '∞'} combinations
             {estimate > COMBINATION_WARN_THRESHOLD ? ' — large' : ''}
