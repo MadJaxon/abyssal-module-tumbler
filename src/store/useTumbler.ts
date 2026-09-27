@@ -15,10 +15,12 @@ import { parseModulesFromChat } from '../lib/chatParser';
 import { parseDogmaResponseIntoModules } from '../lib/dogma';
 import { updateDogmaAttributes } from '../lib/esi';
 import { getMutamarketModules } from '../lib/mutamarket';
+import { combinationSpan } from '../lib/calc';
 import { COMBINATION_WARN_THRESHOLD, estimateCombinationCount } from '../lib/estimate';
 import { inventoryCount } from '../lib/format';
+import { splitRange, workerCountFor } from '../lib/parallelPlan';
 import { defaultPersisted, loadPersisted, savePersisted, type PersistedSlice } from '../lib/persist';
-import { runWorker, type WorkerHandle } from '../lib/workerClient';
+import { runWorker, runWorkerPool, type WorkerHandle } from '../lib/workerClient';
 
 function nextIndex(collection: Module[]): number {
   let index = 1;
@@ -42,18 +44,21 @@ function persistSlice(state: PersistedSlice): void {
     uniqueCombinations: state.uniqueCombinations,
     sorts: state.sorts,
     denseTable: state.denseTable,
+    parallelCalc: state.parallelCalc,
   });
 }
 
 const hydrated = loadPersisted() ?? defaultPersisted();
 
 let handle: WorkerHandle | null = null;
+let runToken = 0;
 
 type TumblerState = PersistedSlice & {
   results: Result[];
   displayedResults: Result[];
   isCalculating: boolean;
   calcProgress: number;
+  calcCores: number;
   errorMessage: string;
   importStatus: string;
   expandedResultId: number | null;
@@ -66,6 +71,7 @@ type TumblerState = PersistedSlice & {
   setCpuBudget: (value: number) => void;
   setPgBudget: (value: number) => void;
   setUnique: (value: boolean) => void;
+  setParallelCalc: (value: boolean) => void;
   toggleSort: (key: TableSorter['key']) => void;
   setDenseTable: (value: boolean) => void;
   setActiveType: (type: AbyssalModuleType | 'all') => void;
@@ -84,6 +90,7 @@ export const useTumbler = create<TumblerState>((set, get) => ({
   displayedResults: [],
   isCalculating: false,
   calcProgress: 0,
+  calcCores: 0,
   errorMessage: '',
   importStatus: '',
   expandedResultId: null,
@@ -165,6 +172,13 @@ export const useTumbler = create<TumblerState>((set, get) => ({
     if (results.length) {
       runSort(get, set, results, sorts);
     }
+  },
+
+  setParallelCalc: (parallelCalc) => {
+    set((state) => {
+      persistSlice({ ...state, parallelCalc });
+      return { parallelCalc };
+    });
   },
 
   toggleSort: (key) => {
@@ -291,63 +305,98 @@ export const useTumbler = create<TumblerState>((set, get) => ({
   },
 }));
 
+function failCalc(
+  set: (partial: Partial<TumblerState>) => void,
+  errorMessage: string,
+) {
+  set({ errorMessage, isCalculating: false, calcProgress: 0, calcCores: 0 });
+}
+
 function startCalculation(
   get: () => TumblerState,
   set: (partial: Partial<TumblerState>) => void,
 ) {
+  const token = ++runToken;
   const state = get();
   handle?.terminate();
+
+  const span = combinationSpan(state.modules, state.numModules);
+  if ('error' in span) {
+    set({
+      isCalculating: false,
+      calcProgress: 0,
+      calcCores: 0,
+      errorMessage: span.error,
+      results: [],
+      displayedResults: [],
+      expandedResultId: null,
+    });
+    return;
+  }
+
+  const cores = typeof navigator === 'undefined' ? 1 : navigator.hardwareConcurrency || 1;
+  const slices = splitRange(span.total, workerCountFor(span.total, cores, state.parallelCalc));
+  const progress = new Array<number>(slices.length).fill(0);
+  const partials: Result[][] = new Array(slices.length);
+  let finished = 0;
+
   set({
     isCalculating: true,
     calcProgress: 0,
+    calcCores: slices.length,
     results: [],
     displayedResults: [],
     errorMessage: '',
     expandedResultId: null,
   });
-  handle = runWorker(
-    {
-      action: 'findCombinations',
-      data: {
-        modules: state.modules,
-        sorts: state.sorts,
-        numModules: state.numModules,
-        cpuBudget: state.cpuBudget,
-        pgBudget: state.pgBudget,
-      },
+
+  const shared = {
+    modules: state.modules,
+    sorts: state.sorts,
+    numModules: state.numModules,
+    cpuBudget: state.cpuBudget,
+    pgBudget: state.pgBudget,
+  };
+
+  handle = runWorkerPool(
+    slices.map((slice) => ({
+      action: 'findCombinations' as const,
+      data: { ...shared, slice },
+    })),
+    (index, event) => {
+      if (token !== runToken) return true;
+      if (event.error) {
+        failCalc(set, event.error);
+        handle?.terminate();
+        return true;
+      }
+      if (event.action !== 'findCombinations') return true;
+      if (event.isUpdate) {
+        progress[index] = event.data as number;
+        let sum = 0;
+        for (const count of progress) sum += count;
+        set({ calcProgress: sum });
+        return false;
+      }
+      const payload = event.data as WorkerCalcCombinationsData | null;
+      if (payload?.error) {
+        failCalc(set, payload.error);
+        handle?.terminate();
+        return true;
+      }
+      partials[index] = payload?.results ?? [];
+      finished += 1;
+      if (finished < slices.length) return true;
+      const results = partials.flat();
+      set({ results, calcProgress: results.length });
+      runSort(get, set, results, get().sorts);
+      return true;
     },
-    (event) => handleCalcEvent(event, get, set),
     (message) => {
-      set({ isCalculating: false, errorMessage: message, calcProgress: 0 });
+      if (token !== runToken) return;
+      failCalc(set, message);
     },
   );
-}
-
-function handleCalcEvent(
-  event: WorkerResult,
-  get: () => TumblerState,
-  set: (partial: Partial<TumblerState>) => void,
-): boolean {
-  if (event.error) {
-    set({ errorMessage: event.error, isCalculating: false, calcProgress: 0 });
-    return true;
-  }
-  if (event.action === 'findCombinations') {
-    if (event.isUpdate) {
-      set({ calcProgress: event.data as number });
-      return false;
-    }
-    const payload = event.data as WorkerCalcCombinationsData | null;
-    if (payload?.error) {
-      set({ errorMessage: payload.error, isCalculating: false, calcProgress: 0 });
-      return true;
-    }
-    const results = payload?.results ?? [];
-    set({ results, calcProgress: results.length });
-    runSort(get, set, results, get().sorts);
-    return true;
-  }
-  return true;
 }
 
 function runSort(
@@ -356,6 +405,7 @@ function runSort(
   results: Result[],
   sorts: TableSorter[],
 ) {
+  const token = ++runToken;
   handle?.terminate();
   set({ isCalculating: true, calcProgress: -1 });
   handle = runWorker(
@@ -368,8 +418,9 @@ function runSort(
       } satisfies WorkerSortData,
     },
     (event) => {
+      if (token !== runToken) return true;
       if (event.error) {
-        set({ errorMessage: event.error, isCalculating: false, calcProgress: 0 });
+        failCalc(set, event.error);
         return true;
       }
       const payload = event.data as WorkerSortData;
@@ -377,11 +428,13 @@ function runSort(
         displayedResults: payload.results,
         isCalculating: false,
         calcProgress: 0,
+        calcCores: 0,
       });
       return true;
     },
     (message) => {
-      set({ isCalculating: false, errorMessage: message, calcProgress: 0 });
+      if (token !== runToken) return;
+      failCalc(set, message);
     },
   );
 }

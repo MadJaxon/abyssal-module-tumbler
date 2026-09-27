@@ -130,6 +130,8 @@ export interface WorkerCalcCombinationsData {
   sorts: TableSorter[];
   error?: string;
   results?: Result[];
+  /** Inclusive start, exclusive end, into the exact-count combination index space. */
+  slice?: { start: number; end: number };
 }
 
 export interface WorkerCommand {

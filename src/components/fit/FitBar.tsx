@@ -1,6 +1,7 @@
 import { MODULE_LABELS, MODULE_TYPES } from '../../types';
 import { COMBINATION_WARN_THRESHOLD, estimateCombinationCount } from '../../lib/estimate';
 import { fmtNum, inventoryCount } from '../../lib/format';
+import { workerCountFor } from '../../lib/parallelPlan';
 import { useTumbler } from '../../store/useTumbler';
 
 export function FitBar() {
@@ -14,6 +15,9 @@ export function FitBar() {
   const calculate = useTumbler((s) => s.calculate);
   const isCalculating = useTumbler((s) => s.isCalculating);
   const calcProgress = useTumbler((s) => s.calcProgress);
+  const calcCores = useTumbler((s) => s.calcCores);
+  const parallelCalc = useTumbler((s) => s.parallelCalc);
+  const setParallelCalc = useTumbler((s) => s.setParallelCalc);
   const pendingEstimate = useTumbler((s) => s.pendingEstimate);
   const confirmPending = useTumbler((s) => s.confirmPending);
   const cancelPending = useTumbler((s) => s.cancelPending);
@@ -21,6 +25,8 @@ export function FitBar() {
   const expandedResultId = useTumbler((s) => s.expandedResultId);
 
   const estimate = estimateCombinationCount(inventoryCount(modules), numModules);
+  const cores = typeof navigator === 'undefined' ? 1 : navigator.hardwareConcurrency || 1;
+  const plannedCores = workerCountFor(estimate, cores, parallelCalc);
   const selected =
     displayed.find((r) => r.id === expandedResultId) ?? displayed[0] ?? null;
   const leftoverCpu = selected ? cpuBudget - selected.totalCpu : null;
@@ -69,13 +75,30 @@ export function FitBar() {
             {isCalculating
               ? calcProgress === -1
                 ? 'SORTING…'
-                : `TUMBLING… ${calcProgress.toLocaleString()}`
+                : `TUMBLING… ${calcProgress.toLocaleString()}${
+                    calcCores > 1 ? ` · ${calcCores} cores` : ''
+                  }`
               : 'CALCULATE'}
           </button>
           <span className="text-[11px] text-muted">
             ~{Number.isFinite(estimate) ? estimate.toLocaleString() : '∞'} combinations
             {estimate > COMBINATION_WARN_THRESHOLD ? ' — large' : ''}
+            {parallelCalc && plannedCores > 1 && Number.isFinite(estimate)
+              ? ` · ${plannedCores} cores`
+              : ''}
           </span>
+          <label
+            className="flex cursor-pointer items-center gap-2 text-[11px] normal-case tracking-normal text-muted"
+            title="Split tumbles of about 5 million combinations and up across CPU cores. Smaller searches stay on one core, where starting extra workers costs more than it saves."
+          >
+            <input
+              type="checkbox"
+              checked={parallelCalc}
+              disabled={isCalculating}
+              onChange={(e) => setParallelCalc(e.target.checked)}
+            />
+            Multiple cores{cores > 1 ? ` (${cores})` : ''}
+          </label>
         </div>
       </div>
 
@@ -111,8 +134,8 @@ export function FitBar() {
       {pendingEstimate != null && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border border-ember/60 bg-ember/10 px-3 py-2 text-sm">
           <p>
-            This will evaluate about {pendingEstimate.toLocaleString()} combinations and may stall the
-            tab. Continue?
+            This will evaluate about {pendingEstimate.toLocaleString()} combinations and may take a
+            while. Continue?
           </p>
           <div className="flex gap-2">
             <button

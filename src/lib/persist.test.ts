@@ -29,4 +29,11 @@ describe('persist', () => {
   it('returns null when empty', () => {
     expect(loadPersisted()).toBeNull();
   });
+
+  it('turns multiple cores on when an older save has no flag', () => {
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({ cpuBudget: 12 }));
+    const loaded = loadPersisted();
+    expect(loaded?.parallelCalc).toBe(true);
+    expect(loaded?.cpuBudget).toBe(12);
+  });
 });

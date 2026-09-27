@@ -15,6 +15,8 @@ export type PersistedSlice = {
   uniqueCombinations: boolean;
   sorts: TableSorter[];
   denseTable: boolean;
+  /** Split large tumbles across workers. Small searches still use one. */
+  parallelCalc: boolean;
 };
 
 export function defaultPersisted(): PersistedSlice {
@@ -26,6 +28,7 @@ export function defaultPersisted(): PersistedSlice {
     uniqueCombinations: false,
     sorts: [],
     denseTable: false,
+    parallelCalc: true,
   };
 }
 

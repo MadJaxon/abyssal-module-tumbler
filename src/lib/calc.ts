@@ -1,7 +1,8 @@
-// Verbatim port of old_project/src/app/abyssal-tumbler/calculations.worker.ts
-// Arithmetic, aggregation, combination generation, uniqueness, and sort
-// order are frozen. onProgress replaces in-worker postMessage so the same
-// functions can run in unit tests.
+// Stacking penalties, aggregation, uniqueness, and sort order are a verbatim
+// port of old_project/src/app/abyssal-tumbler/calculations.worker.ts.
+// Enumeration is order-equivalent to that worker (same fits, same ids) but
+// walks the exact-count product directly so large inventories are not built
+// up front. onProgress replaces in-worker postMessage.
 
 import {
   AfterburnerModule,
@@ -75,6 +76,362 @@ export function makeResultsUnique(results: Result[]) {
   });
 }
 
+const TOO_MANY =
+  'Too many combinations to enumerate. Lower how many of each module type are selected.';
+
+/** Fast-path budget margin. Float noise on a handful of fitting numbers is far below this. */
+const BUDGET_SLACK = 1e-4;
+
+type Axis = {
+  modules: Module[];
+  n: number;
+  k: number;
+  count: number;
+  comb: number[];
+  cpu: number;
+  pg: number;
+};
+
+function binomial(n: number, k: number): number {
+  if (k < 0 || n < 0 || k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  let use = Math.min(k, n - k);
+  let result = 1;
+  for (let i = 1; i <= use; i++) {
+    const prod = result * (n - use + i);
+    if (!Number.isSafeInteger(prod)) return Number.POSITIVE_INFINITY;
+    result = prod / i;
+    if (!Number.isSafeInteger(result)) return Number.POSITIVE_INFINITY;
+  }
+  return result;
+}
+
+function buildAxes(modules: Record<string, Module[]>, limits: Record<string, number>): Axis[] {
+  const axes: Axis[] = [];
+  for (const key of Object.keys(modules)) {
+    const k = limits[key] ?? 0;
+    if (k <= 0) continue;
+    const list = modules[key] ?? [];
+    axes.push({
+      modules: list,
+      n: list.length,
+      k,
+      count: binomial(list.length, k),
+      comb: [],
+      cpu: 0,
+      pg: 0,
+    });
+  }
+  return axes;
+}
+
+/** Size of the exact-count product. `{ total: 0 }` means nothing to score. */
+export function combinationSpan(
+  modules: Record<string, Module[]>,
+  limits: Record<string, number>,
+): { total: number } | { error: string } {
+  const axes = buildAxes(modules, limits);
+  if (axes.length === 0) return { total: 0 };
+  if (axes.some((axis) => axis.count === 0)) return { total: 0 };
+  let total = 1;
+  for (const axis of axes) {
+    if (!Number.isFinite(axis.count)) return { error: TOO_MANY };
+    total *= axis.count;
+    if (!Number.isSafeInteger(total)) return { error: TOO_MANY };
+  }
+  return { total };
+}
+
+function axisLowerBound(modules: Module[], k: number): { cpu: number; pg: number } {
+  const cpus: number[] = [];
+  const pgs: number[] = [];
+  for (const module of modules) {
+    cpus.push(module.cpu);
+    pgs.push(module.pg);
+  }
+  cpus.sort((a, b) => a - b);
+  pgs.sort((a, b) => a - b);
+  let cpu = 0;
+  let pg = 0;
+  for (let i = 0; i < k; i++) {
+    cpu += cpus[i];
+    pg += pgs[i];
+  }
+  return { cpu, pg };
+}
+
+/** True when every exact-count fit is over budget, so the walk can be skipped. */
+function cheapestExceedsBudget(
+  axes: Axis[],
+  cpuBudget: number,
+  pgBudget: number,
+): boolean {
+  let cpu = 0;
+  let pg = 0;
+  for (const axis of axes) {
+    const bound = axisLowerBound(axis.modules, axis.k);
+    cpu += bound.cpu;
+    pg += bound.pg;
+  }
+  return cpu > cpuBudget + BUDGET_SLACK || pg > pgBudget + BUDGET_SLACK;
+}
+
+function costsAreNonNegative(modules: Record<string, Module[]>): boolean {
+  for (const key of Object.keys(modules)) {
+    for (const module of modules[key] ?? []) {
+      if (module.cpu < 0 || module.pg < 0) return false;
+    }
+  }
+  return true;
+}
+
+function loadCost(axis: Axis): void {
+  let cpu = 0;
+  let pg = 0;
+  const mods = axis.modules;
+  const comb = axis.comb;
+  for (let i = 0; i < comb.length; i++) {
+    const module = mods[comb[i]];
+    cpu += module.cpu;
+    pg += module.pg;
+  }
+  axis.cpu = cpu;
+  axis.pg = pg;
+}
+
+/** Lexicographic unrank. Matches the old recursive combinations() order. */
+function unrankLex(n: number, k: number, rank: number): number[] {
+  if (k === 0) return [];
+  const comb: number[] = [];
+  let remaining = k;
+  let index = 0;
+  let left = rank;
+  while (remaining > 0) {
+    if (index >= n) throw new Error('combination rank out of range');
+    const block = binomial(n - index - 1, remaining - 1);
+    if (block > left) {
+      comb.push(index);
+      index += 1;
+      remaining -= 1;
+    } else {
+      left -= block;
+      index += 1;
+    }
+  }
+  return comb;
+}
+
+function assignRank(axis: Axis, rank: number): void {
+  axis.comb = unrankLex(axis.n, axis.k, rank);
+  loadCost(axis);
+}
+
+function nextLex(comb: number[], n: number): boolean {
+  const k = comb.length;
+  if (k === 0) return false;
+  let i = k - 1;
+  while (i >= 0 && comb[i] === n - k + i) i--;
+  if (i < 0) return false;
+  comb[i] += 1;
+  for (let j = i + 1; j < k; j++) comb[j] = comb[j - 1] + 1;
+  return true;
+}
+
+function stepAxis(axis: Axis): boolean {
+  if (!nextLex(axis.comb, axis.n)) return false;
+  loadCost(axis);
+  return true;
+}
+
+function seek(axes: Axis[], flat: number): void {
+  let rest = flat;
+  for (let i = axes.length - 1; i >= 0; i--) {
+    const rank = rest % axes[i].count;
+    rest = Math.floor(rest / axes[i].count);
+    assignRank(axes[i], rank);
+  }
+}
+
+function step(axes: Axis[]): boolean {
+  for (let i = axes.length - 1; i >= 0; i--) {
+    if (stepAxis(axes[i])) return true;
+    assignRank(axes[i], 0);
+  }
+  return false;
+}
+
+function chosenModules(axes: Axis[]): Module[] {
+  const out: Module[] = [];
+  for (const axis of axes) {
+    const mods = axis.modules;
+    const comb = axis.comb;
+    for (let i = 0; i < comb.length; i++) out.push(mods[comb[i]]);
+  }
+  return out;
+}
+
+/**
+ * Visit exact-count combinations whose flat index is in [start, end).
+ * Ids are that flat index, including combinations rejected for CPU/PG,
+ * matching the original forEach index.
+ */
+function enumerateRange(
+  axes: Axis[],
+  start: number,
+  end: number,
+  cpuBudget: number,
+  pgBudget: number,
+  prune: boolean,
+  onHit: (modules: Module[], id: number) => void,
+): void {
+  if (axes.length === 0 || !(start < end)) return;
+  const suffix = new Array<number>(axes.length + 1);
+  suffix[axes.length] = 1;
+  for (let i = axes.length - 1; i >= 0; i--) {
+    suffix[i] = suffix[i + 1] * axes[i].count;
+  }
+  const total = suffix[0];
+  if (start >= total) return;
+  if (end > total) end = total;
+
+  seek(axes, start);
+  let id = start;
+  while (id < end) {
+    let cpu = 0;
+    let pg = 0;
+    let pruneAt = -1;
+    if (prune) {
+      for (let i = 0; i < axes.length; i++) {
+        cpu += axes[i].cpu;
+        pg += axes[i].pg;
+        if (cpu > cpuBudget + BUDGET_SLACK || pg > pgBudget + BUDGET_SLACK) {
+          pruneAt = i;
+          break;
+        }
+      }
+    } else {
+      for (let i = 0; i < axes.length; i++) {
+        cpu += axes[i].cpu;
+        pg += axes[i].pg;
+      }
+    }
+
+    if (pruneAt >= 0) {
+      const period = suffix[pruneAt + 1];
+      const skip = period - (id % period);
+      if (skip > 1) {
+        if (id + skip > end) return;
+        id += skip;
+        if (id >= end) return;
+        seek(axes, id);
+        continue;
+      }
+    } else if (cpu <= cpuBudget - BUDGET_SLACK && pg <= pgBudget - BUDGET_SLACK) {
+      onHit(chosenModules(axes), id);
+    } else if (cpu <= cpuBudget + BUDGET_SLACK && pg <= pgBudget + BUDGET_SLACK) {
+      const mods = chosenModules(axes);
+      const totalCpu = mods.reduce((sum, module) => sum + module.cpu, 0);
+      const totalPg = mods.reduce((sum, module) => sum + module.pg, 0);
+      if (totalCpu <= cpuBudget && totalPg <= pgBudget) onHit(mods, id);
+    }
+
+    id += 1;
+    if (id >= end) return;
+    if (!step(axes)) return;
+  }
+}
+
+function evaluateCombination(comb: Module[], id: number): Result {
+  const totalCpu = comb.reduce((sum, m) => sum + m.cpu, 0);
+  const totalPg = comb.reduce((sum, m) => sum + m.pg, 0);
+  const dpsIncrease = calculateDpsIncrease(comb.filter((m) => m.type === 'dps') as DpsModule[]);
+
+  const smartbombs = comb.filter((m) => m.type === 'sb') as SmartbombModule[];
+  const smartbombDps = smartbombs.reduce((carry: number, current) => {
+    return carry + current.damage / (current.activationTime / 1000);
+  }, 0);
+  const smartbombGjs = smartbombs.reduce((carry: number, current) => {
+    return carry + current.activationCost / (current.activationTime / 1000);
+  }, 0);
+  const smartbombRange =
+    smartbombs.length === 0
+      ? 0
+      : smartbombs.reduce((carry: number, current) => {
+          return carry + current.range;
+        }, 0) / smartbombs.length;
+
+  const neuts = comb.filter((m) => m.type === 'neut') as NeutModule[];
+  const neutAmount = neuts.reduce((carry: number, current) => {
+    return carry + current.neutAmount / (current.activationTime / 1000);
+  }, 0);
+  const neutGjs = neuts.reduce((carry: number, current) => {
+    return carry + current.activationCost / (current.activationTime / 1000);
+  }, 0);
+  const neutRange =
+    neuts.length === 0
+      ? 0
+      : neuts.reduce((carry: number, current) => {
+          return carry + current.range;
+        }, 0) / neuts.length;
+
+  const noses = comb.filter((m) => m.type === 'nos') as NosModule[];
+  const nosAmount = noses.reduce((carry: number, current) => {
+    return carry + current.drainAmount / (current.activationTime / 1000);
+  }, 0);
+  const nosRange =
+    noses.length === 0
+      ? 0
+      : noses.reduce((carry: number, current) => {
+          return carry + current.range;
+        }, 0) / noses.length;
+
+  const batteries = comb.filter((m) => m.type === 'battery') as BatteryModule[];
+  const capBonus = batteries.reduce((carry: number, current) => {
+    return carry + current.capacitorBonus;
+  }, 0);
+  const drainResistance = calculateDrainResistanceBonus(batteries);
+
+  const aferburners = comb.filter((m) => m.type === 'ab') as AfterburnerModule[];
+  const abVelocity = Math.max(...aferburners.map((ab) => ab.velocityBonus));
+  const abGj = Math.max(...aferburners.map((ab) => ab.activationCost));
+
+  const mwds = comb.filter((m) => m.type === 'mwd') as MircowarpModule[];
+  const mwdVelocity = Math.max(...mwds.map((ab) => ab.velocityBonus));
+  const mwdGj = Math.max(...mwds.map((ab) => ab.activationCost));
+  const mwdSignature = Math.max(...mwds.map((ab) => ab.signatureRadiusModifier));
+
+  const totalGj = Math.max(0, smartbombGjs) + Math.max(0, neutGjs) + Math.max(0, abGj, mwdGj);
+
+  return {
+    id,
+    modules: comb.map((m) => ({
+      type: m.type,
+      index: m.index,
+      itemId: m.itemId,
+      typeId: m.typeId,
+    })) as ResultModule[],
+    totalCpu,
+    totalPg,
+    dpsIncrease,
+    smartbombDps,
+    smartbombGjs,
+    smartbombRange,
+    neutAmount,
+    neutGjs,
+    neutRange,
+    nosAmount,
+    nosRange,
+    capBonus,
+    drainResistance,
+    abVelocity,
+    abGj,
+    mwdVelocity,
+    mwdGj,
+    mwdSignature,
+    totalGj,
+  };
+}
+
 export function findCombinations(
   data: WorkerCalcCombinationsData,
   onProgress?: (count: number) => void,
@@ -88,172 +445,44 @@ export function findCombinations(
     data.error = 'Please enter valid budget and number of modules.';
     return data;
   }
+
+  const span = combinationSpan(data.modules, data.numModules);
+  if ('error' in span) {
+    data.error = span.error;
+    return data;
+  }
+
   const results: Result[] = [];
-
-  const combinations = generateLimitedCombinations(data.modules, data.numModules);
-  combinations.forEach((comb, index) => {
-    const totalCpu = comb.reduce((sum, m) => sum + m.cpu, 0);
-    const totalPg = comb.reduce((sum, m) => sum + m.pg, 0);
-    if (totalCpu <= data.cpuBudget && totalPg <= data.pgBudget) {
-      const dpsIncrease = calculateDpsIncrease(comb.filter((m) => m.type === 'dps') as DpsModule[]);
-
-      const smartbombs = comb.filter((m) => m.type === 'sb') as SmartbombModule[];
-      const smartbombDps = smartbombs.reduce((carry: number, current) => {
-        return carry + current.damage / (current.activationTime / 1000);
-      }, 0);
-      const smartbombGjs = smartbombs.reduce((carry: number, current) => {
-        return carry + current.activationCost / (current.activationTime / 1000);
-      }, 0);
-      const smartbombRange =
-        smartbombs.length === 0
-          ? 0
-          : smartbombs.reduce((carry: number, current) => {
-              return carry + current.range;
-            }, 0) / smartbombs.length;
-
-      const neuts = comb.filter((m) => m.type === 'neut') as NeutModule[];
-      const neutAmount = neuts.reduce((carry: number, current) => {
-        return carry + current.neutAmount / (current.activationTime / 1000);
-      }, 0);
-      const neutGjs = neuts.reduce((carry: number, current) => {
-        return carry + current.activationCost / (current.activationTime / 1000);
-      }, 0);
-      const neutRange =
-        neuts.length === 0
-          ? 0
-          : neuts.reduce((carry: number, current) => {
-              return carry + current.range;
-            }, 0) / neuts.length;
-
-      const noses = comb.filter((m) => m.type === 'nos') as NosModule[];
-      const nosAmount = noses.reduce((carry: number, current) => {
-        return carry + current.drainAmount / (current.activationTime / 1000);
-      }, 0);
-      const nosRange =
-        noses.length === 0
-          ? 0
-          : noses.reduce((carry: number, current) => {
-              return carry + current.range;
-            }, 0) / noses.length;
-
-      const batteries = comb.filter((m) => m.type === 'battery') as BatteryModule[];
-      const capBonus = batteries.reduce((carry: number, current) => {
-        return carry + current.capacitorBonus;
-      }, 0);
-      const drainResistance = calculateDrainResistanceBonus(batteries);
-
-      const aferburners = comb.filter((m) => m.type === 'ab') as AfterburnerModule[];
-      const abVelocity = Math.max(...aferburners.map((ab) => ab.velocityBonus));
-      const abGj = Math.max(...aferburners.map((ab) => ab.activationCost));
-
-      const mwds = comb.filter((m) => m.type === 'mwd') as MircowarpModule[];
-      const mwdVelocity = Math.max(...mwds.map((ab) => ab.velocityBonus));
-      const mwdGj = Math.max(...mwds.map((ab) => ab.activationCost));
-      const mwdSignature = Math.max(...mwds.map((ab) => ab.signatureRadiusModifier));
-
-      const totalGj = Math.max(0, smartbombGjs) + Math.max(0, neutGjs) + Math.max(0, abGj, mwdGj);
-
-      results.push({
-        id: index,
-        modules: comb.map((m) => ({
-          type: m.type,
-          index: m.index,
-          itemId: m.itemId,
-          typeId: m.typeId,
-        })) as ResultModule[],
-        totalCpu,
-        totalPg,
-        dpsIncrease,
-        smartbombDps,
-        smartbombGjs,
-        smartbombRange,
-        neutAmount,
-        neutGjs,
-        neutRange,
-        nosAmount,
-        nosRange,
-        capBonus,
-        drainResistance,
-        abVelocity,
-        abGj,
-        mwdVelocity,
-        mwdGj,
-        mwdSignature,
-        totalGj,
-      });
-      onProgress?.(results.length);
-    }
-  });
-
-  data.results = results;
-
-  return data;
-}
-
-function combinations(arr: Module[], r: number): Module[][] {
-  if (r === 0) {
-    return [[]];
+  const axes = buildAxes(data.modules, data.numModules);
+  if (span.total === 0 || axes.some((axis) => axis.count === 0)) {
+    onProgress?.(0);
+    data.results = results;
+    return data;
   }
-  if (arr.length < r) {
-    return [];
+  const start = data.slice?.start ?? 0;
+  const end = data.slice?.end ?? span.total;
+  if (cheapestExceedsBudget(axes, data.cpuBudget, data.pgBudget)) {
+    onProgress?.(0);
+    data.results = results;
+    return data;
   }
-  const result: Module[][] = [];
-  for (let i = 0; i <= arr.length - r; i++) {
-    const head = arr[i];
-    const tails = combinations(arr.slice(i + 1), r - 1);
-    for (const tail of tails) {
-      result.push([head, ...tail]);
-    }
-  }
-  return result;
-}
-
-function cartesianProduct(subsetLists: Module[][][]): Module[][] {
-  return subsetLists.reduce(
-    (acc: Module[][], curr: Module[][]) => {
-      const res: Module[][] = [];
-      for (const a of acc) {
-        for (const b of curr) {
-          res.push([...a, ...b]);
-        }
-      }
-      return res;
+  let valid = 0;
+  enumerateRange(
+    axes,
+    start,
+    end,
+    data.cpuBudget,
+    data.pgBudget,
+    costsAreNonNegative(data.modules),
+    (comb, id) => {
+      results.push(evaluateCombination(comb, id));
+      valid += 1;
+      if ((valid & 1023) === 0) onProgress?.(valid);
     },
-    [[]],
   );
-}
-
-function generateLimitedCombinations(
-  data: Record<string, Module[]>,
-  limits: Record<string, number>,
-): Module[][] {
-  const allSubsets: Record<string, any[][]> = {};
-  const keys = Object.keys(data);
-
-  for (const key of keys) {
-    const arr = data[key];
-    const limit = limits[key] ?? 0; // Default to 0 if no limit specified
-    const subsets: any[][] = [];
-    for (let r = 0; r <= Math.min(limit, arr.length); r++) {
-      // chunking as a workaround for javascripts maximum function arguments limitation
-      const chunkSize = 100;
-      const combinationsArray = combinations(arr, r);
-      for (let i = 0; i < combinationsArray.length; i += chunkSize) {
-        const chunk = combinationsArray.slice(i, i + chunkSize);
-        subsets.push(...chunk);
-      }
-    }
-    allSubsets[key] = subsets;
-  }
-
-  const subsetLists = keys.map((key) => allSubsets[key]);
-  const maxFilteredCombinations = cartesianProduct(subsetLists);
-  return maxFilteredCombinations.filter(
-    (set) =>
-      !Object.keys(limits).some(
-        (type) => set.filter((set) => set.type === type).length !== limits[type],
-      ),
-  );
+  onProgress?.(valid);
+  data.results = results;
+  return data;
 }
 
 export function calculateDpsIncrease(modules: DpsModule[]): number {

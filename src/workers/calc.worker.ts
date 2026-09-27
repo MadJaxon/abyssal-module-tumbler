@@ -10,19 +10,25 @@ import type {
 
 addEventListener('message', (event: MessageEvent<WorkerCommand>) => {
   switch (event.data.action) {
-    case 'findCombinations':
+    case 'findCombinations': {
+      let lastPosted = 0;
+      const data = findCombinations(event.data.data as WorkerCalcCombinationsData, (count) => {
+        const now = Date.now();
+        if (now - lastPosted < 150) return;
+        lastPosted = now;
+        postMessage({
+          action: 'findCombinations',
+          data: count,
+          isUpdate: true,
+        } satisfies WorkerResult);
+      });
       postMessage({
         action: event.data.action,
-        data: findCombinations(event.data.data as WorkerCalcCombinationsData, (count) => {
-          postMessage({
-            action: 'findCombinations',
-            data: count,
-            isUpdate: true,
-          } satisfies WorkerResult);
-        }),
+        data,
         isUpdate: false,
       } satisfies WorkerResult);
       break;
+    }
     case 'sort':
       postMessage({
         action: event.data.action,
