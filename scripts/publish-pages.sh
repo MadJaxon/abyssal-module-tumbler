@@ -8,7 +8,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-remote_name=origin
+remote_name=github
 pages_branch=gh-pages
 base_path="/abyssal-module-tumbler/"
 

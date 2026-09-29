@@ -8,7 +8,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
-remote_name=origin
+remote_name=github
 repo_ssh="git@github.com:MadJaxon/abyssal-module-tumbler.git"
 
 if [[ "${1:-}" != "--replace-master" ]]; then
