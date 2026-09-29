@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
-export default defineConfig({
+// GitHub Pages serves this repo at /abyssal-module-tumbler/. The dev server stays at /.
+const pagesBase = '/abyssal-module-tumbler/';
+
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? pagesBase : '/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -34,4 +38,4 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
   },
-});
+}));
