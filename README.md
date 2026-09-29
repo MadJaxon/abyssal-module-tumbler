@@ -41,48 +41,6 @@ npm test
 
 Golden tests pin stacking, combination aggregation, uniqueness, the chat parser, and dogma classification against the original formulas.
 
-## Publish
-
-The public site is [https://madjaxon.github.io/abyssal-module-tumbler/](https://madjaxon.github.io/abyssal-module-tumbler/), served from the `gh-pages` branch of `MadJaxon/abyssal-module-tumbler`. Run the scripts in Git Bash on the machine that has the GitHub SSH key.
-
-GitHub `master` is the old Angular app until the one-time replace below. Copy this repository to that machine, including the `.git` directory. `git clone git@github.com:MadJaxon/abyssal-module-tumbler.git` still downloads the Angular app until that replace has finished.
-
-A production build uses base path `/abyssal-module-tumbler/`. `npm run dev` stays at `/`.
-
-### One time
-
-From this repo, in Git Bash:
-
-```bash
-git status
-git remote add origin git@github.com:MadJaxon/abyssal-module-tumbler.git
-./scripts/replace-github-master.sh --replace-master
-```
-
-`git status` must be clean. The script fetches GitHub and force-updates `master` with this history (`--force-with-lease`). It leaves `gh-pages` alone, so the live site stays on the Angular build until the next command.
-
-In the repository on GitHub, Settings → Pages → Build and deployment should be **Deploy from a branch**, branch **gh-pages**, folder **/ (root)**. That is the setting already serving the old site.
-
-Then install, build, and replace the page:
-
-```bash
-npm install --include=dev
-./scripts/publish-pages.sh
-```
-
-`publish-pages.sh` runs the production build and force-updates `gh-pages` only. The site URL stays the same.
-
-### Later
-
-```bash
-git clone git@github.com:MadJaxon/abyssal-module-tumbler.git
-cd abyssal-module-tumbler
-npm install --include=dev
-./scripts/publish-pages.sh
-```
-
-Pasting modules from in-game chat works on the published site (ESI allows browser requests). A MutaMarket type-search URL needs the dev server's `/api/mutamarket` proxy, which GitHub Pages does not run.
-
 ## Out of scope
 
 EVE SSO hangar import, extra module types (shield boosters / armor reps), and a hosted Redis cache layer. The original optional cache service is not required.
